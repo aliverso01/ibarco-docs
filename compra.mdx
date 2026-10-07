@@ -25,9 +25,9 @@ Corpo (JSON):
 | `billing_phone` | string | recomendado | Telefone com DDD, só números, até 15 caracteres. |
 | `billing_cpf` | string | um dos dois | CPF do comprador, até 14 caracteres (`000.000.000-00`). Necessário para cobrar. |
 | `billing_cnpj` | string | um dos dois | CNPJ do comprador, até 18 caracteres. |
-| `quantidade_adultos` | inteiro | recomendado | Quantos `AD` há em `passengers`. |
-| `quantidade_criancas` | inteiro | recomendado | Quantos `CH` há em `passengers`. |
-| `quantidade_idosos` | inteiro | recomendado | Quantos `SR` há em `passengers`. |
+| `quantidade_adultos` | inteiro | não (se vierem, precisam bater com `passengers`) | Quantos `AD` há em `passengers`. |
+| `quantidade_criancas` | inteiro | não (se vierem, precisam bater com `passengers`) | Quantos `CH` há em `passengers`. |
+| `quantidade_idosos` | inteiro | não (se vierem, precisam bater com `passengers`) | Quantos `SR` há em `passengers`. |
 | `cupom_codigo` | string | não | Código de cupom de desconto. Valide antes com [`POST /cupons/validar`](#validar-cupom). O desconto é abatido no servidor. |
 | `passengers` | lista | **sim, na prática** | Um item por passageiro. É dela que saem o preço e o bilhete. |
 
@@ -173,15 +173,19 @@ Com a chave de API (e para contas de cliente ou de dono de barco), os campos `st
 
 ### Passageiros e contadores
 
-<Badge icon="circle-check" color="green">Disponível</Badge>
+<Badge icon="clock" color="orange">Em breve</Badge>
 
-**O preço e o bilhete saem da lista `passengers`**. Os campos `quantidade_adultos`, `quantidade_criancas` e `quantidade_idosos` são informativos e não entram na conta. Envie os contadores coerentes com a lista.
+O preço e o bilhete saem da lista `passengers`, e cada passageiro é classificado pela faixa etária da viagem.
 
-#### Validação estrita dos contadores
+- Se `quantidade_adultos`, `quantidade_criancas` ou `quantidade_idosos` vierem no corpo, precisam bater com a lista `passengers`. Contadores informados só em parte: os ausentes contam como `0`.
+- Se nenhum dos três vier, a API deriva os três da lista.
+- Se houver divergência, a API responde `400` e a venda não é criada:
 
-<Badge icon="calendar" color="purple">Planejado</Badge>
+```json
+{"error": {"detail": ["Os contadores informados (1 adulto, 0 crianças, 0 idosos) não batem com a lista de passageiros (2 adultos, 1 criança, 0 idosos)."], "status_code": ["400"]}}
+```
 
-A API passará a recusar com `400` a venda em que os contadores não batem com a quantidade de `AD`, `CH` e `SR` em `passengers`.
+A venda criada com a chave de API do parceiro fica vinculada a ele. É esse vínculo que habilita os [webhooks de saída](/webhooks) e o cancelamento pelo parceiro.
 
 ## Validar cupom
 

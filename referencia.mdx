@@ -59,12 +59,12 @@ A exigência do token da venda nesses endpoints está <Badge icon="clock" color=
 
 | Método | Caminho | Autenticação | Status | Seção |
 |---|---|---|---|---|
-| `POST` | `/venda/cancelamento/{venda_id}` | Chave ou Bearer + token da venda | <Badge icon="circle-check" color="green">Disponível</Badge> (taxa fixa, estorno manual) | [Cancelamento atual](/cancelamento#cancelamento-atual) |
-| `GET` | `/venda/cancelamento/{venda_id}` | Chave ou Bearer | <Badge icon="calendar" color="purple">Planejado</Badge> | [Prévia do cancelamento](/cancelamento#prévia-do-cancelamento) |
-| `POST` | `/venda/cancelamento/{venda_id}` com estorno automático | Chave ou Bearer | <Badge icon="calendar" color="purple">Planejado</Badge> | [Estorno automático](/cancelamento#cancelamento-com-estorno-automático) |
+| `GET` | `/venda/cancelamento/{venda_id}` | Chave ou Bearer + token da venda | <Badge icon="clock" color="orange">Em breve</Badge> | [Prévia do cancelamento](/cancelamento#prévia-do-cancelamento) |
+| `POST` | `/venda/cancelamento/{venda_id}` | Chave ou Bearer + token da venda | <Badge icon="clock" color="orange">Em breve</Badge> (faixas de retenção e estorno automático) | [Cancelar com estorno](/cancelamento#cancelar-com-estorno) |
 
 ## Webhooks de saída
 
 | Evento | Status | Seção |
 |---|---|---|
-| `venda.criada`, `venda.confirmada`, `venda.cancelada`, `venda.expirada` | <Badge icon="calendar" color="purple">Planejado</Badge> | [Webhooks](/webhooks) |
+| `venda.criada`, `venda.confirmada`, `venda.cancelada` | <Badge icon="clock" color="orange">Em breve</Badge> | [Webhooks](/webhooks) |
+| `venda.expirada` | <Badge icon="calendar" color="purple">Planejado</Badge> | [Webhooks](/webhooks#eventos) |

@@ -880,6 +880,37 @@
       "name": "Cancelamento",
       "item": [
         {
+          "name": "Prévia do cancelamento",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/venda/cancelamento/{{venda_id}}?t={{token_acesso}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "venda",
+                "cancelamento",
+                "{{venda_id}}"
+              ],
+              "query": [
+                {
+                  "key": "t",
+                  "value": "{{token_acesso}}"
+                }
+              ]
+            },
+            "description": "Diz se a venda pode ser cancelada e quanto volta, sem cancelar nada."
+          }
+        },
+        {
           "name": "Cancelar venda",
           "request": {
             "method": "POST",
@@ -907,7 +938,7 @@
                 }
               ]
             },
-            "description": "Cancela na hora, sem prévia. Taxa fixa de 20 %. Estorno manual pela equipe iBarco."
+            "description": "Cancela na hora, aplica a faixa de retenção por antecedência e pede o estorno ao gateway. Use a prévia antes."
           }
         }
       ]
