@@ -9,7 +9,7 @@ Vale para pessoas e para agentes de IA. Leia antes de alterar qualquer página.
 - Antes de concluir qualquer mudança, rode `npx -y mint validate` e `npx -y mint broken-links --check-anchors`. Os dois precisam passar sem erro.
 - Use só componentes que existem no Mintlify (`Note`, `Tip`, `Warning`, `Danger`, `Info`, `Check`, `Tabs`/`Tab`, `Steps`/`Step`, `Card`, `Columns`, `Badge`, blocos ```mermaid). Os callouts não aceitam `title`: use uma primeira linha em negrito.
 - Em MDX, chaves `{}` e `<` fora de código são interpretados como JSX. Caminhos como `/vendas/{id}` e marcadores como `<token_acesso>` vão sempre entre crases ou em bloco de código.
-- Links internos são absolutos, sem extensão: `/pagamento#acesso-a-venda`. A âncora é o título em minúsculas, sem acentos, com espaços trocados por hífens. Para ter uma âncora estável, prefira um título em texto puro e ponha o endpoint num subtítulo abaixo.
+- Links internos são absolutos, sem extensão: `/pagamento#acesso-à-venda`. A âncora é o título em minúsculas, com acentos preservados e espaços trocados por hífens. Para ter uma âncora estável, prefira um título em texto puro e ponha o endpoint num subtítulo abaixo. Confirme com `mint broken-links --check-anchors`.
 
 ## Público e tom
 
