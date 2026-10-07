@@ -11,6 +11,11 @@ Mudanças na API e nesta documentação, da mais recente para a mais antiga. Mud
 
 - **Campos protegidos na criação da venda:** `status_reserva`, `metodo_pagamento`, `payment_intent_id`, `is_cancelable`, `vendido_por`, `total`, `subtotal` e `desconto_cupom` enviados no corpo passam a ser ignorados, sem erro. A venda sempre nasce `CREATED` e o valor é calculado pela iBarco. Veja [Compra](/compra#campos-ignorados-na-criação).
 - **Token da venda obrigatório:** `POST /venda/cancelamento/{id}`, `POST /venda/payment-link/{id}`, `POST /venda/process-payment/{id}`, `POST /venda/stripe-checkout/{id}` e `GET /venda/check-status/{id}` passam a exigir o token da venda (`?t=`), equipe iBarco ou o comprador autenticado, além da chave de API. Sem prova de acesso, `403`. `GET /venda/check-status/{id}` passa a exigir credencial (`401` sem credencial). Veja [Acesso à venda](/pagamento#acesso-à-venda).
+- **Webhooks de saída:** eventos `venda.criada`, `venda.confirmada` e `venda.cancelada`, com assinatura HMAC-SHA256 e reentregas. Os avisos valem para vendas criadas com a chave do parceiro. `venda.expirada` segue Planejado. Veja [Webhooks](/webhooks).
+- **Cancelamento com prévia e estorno automático:** `GET /venda/cancelamento/{id}` mostra a faixa de retenção e o valor a estornar; `POST /venda/cancelamento/{id}` aplica a faixa e pede o estorno ao gateway. Se o gateway recusar, a resposta é `502` e a venda não é cancelada. Veja [Cancelamento](/cancelamento).
+- **Contadores × passageiros:** `quantidade_adultos`, `quantidade_criancas` e `quantidade_idosos`, quando enviados, precisam bater com `passengers`; divergência responde `400`. Sem contadores, a API os deriva da lista. Veja [Compra](/compra#passageiros-e-contadores).
+- **Idade pela política da embarcação:** a validação do `pax_type` usa a mesma política de `faixas_etarias`. Veja [Conceitos](/conceitos#regra-de-idade-unificada).
+- **Valores fixos de `metodo_pagamento`:** `PIX`, `CREDITO`, `CREDITO_PARCELADO` e `STRIPE`. Veja [Pagamento](/pagamento#método-de-pagamento-gravado).
 
 ## 06/10/2026
 

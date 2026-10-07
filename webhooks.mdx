@@ -1,29 +1,26 @@
 ---
 title: "Webhooks"
-description: "Como acompanhar vendas hoje e os webhooks de saída planejados: eventos, formato, assinatura e reentregas."
+description: "Como acompanhar vendas por consulta e por webhooks de saída: eventos, formato, assinatura e reentregas."
 ---
 
-<Badge icon="calendar" color="purple">Planejado</Badge>
+<Badge icon="clock" color="orange">Em breve</Badge>
 
-## Como funciona hoje
+## Consulta de status
 
 <Badge icon="circle-check" color="green">Disponível</Badge>
 
-Para saber se uma venda foi paga ou cancelada, consulte [`GET /venda/check-status/{venda_id}`](/pagamento#acompanhar-a-confirmação).
+Para saber se uma venda foi paga ou cancelada, consulte [`GET /venda/check-status/{venda_id}`](/pagamento#acompanhar-a-confirmação). A consulta continua válida como alternativa e como rede de segurança, por exemplo para conferir uma venda quando um aviso não chegar.
 
-## O que está planejado
+## Webhooks de saída
 
-A iBarco passa a avisar o seu sistema quando algo acontece com uma venda sua, sem você precisar consultar.
+<Badge icon="clock" color="orange">Em breve</Badge>
 
-<Warning>
-**Valores propostos, sujeitos a confirmação**
+A iBarco avisa o seu sistema quando algo acontece com uma venda sua, sem você precisar consultar.
 
-Eventos, formato, prazos e política de reentrega abaixo podem mudar até a entrega.
-
-- **Cadastro:** feito pela equipe iBarco, a seu pedido. Você informa a URL (HTTPS) e recebe um **segredo** para validar a assinatura.
-- **Prazo de resposta:** seu endpoint deve responder `2xx` em até **10 segundos**.
-- **Reentregas:** sem `2xx` no prazo, a iBarco tenta de novo em **1 min, 5 min, 30 min, 2 h e 12 h**. Depois disso, desiste.
-</Warning>
+- **Cadastro:** feito pela equipe iBarco, a pedido do parceiro. Você informa a URL (HTTPS) e os eventos que quer receber, e recebe um **segredo** para validar a assinatura.
+- **Vínculo com a chave de API:** o webhook fica vinculado à sua chave de API. Só vendas criadas com a chave do parceiro geram avisos.
+- **Prazo de resposta:** seu endpoint deve responder `2xx` em até **10 segundos**. Qualquer outra resposta, ou a falta de resposta no prazo, conta como falha.
+- **Reentregas:** após a primeira tentativa sem `2xx`, a iBarco tenta de novo em **1 min, 5 min, 30 min, 2 h e 12 h**, sempre com o mesmo `X-Ibarco-Delivery`. Após a 6ª tentativa sem `2xx`, o aviso é abandonado.
 
 ### Eventos
 
@@ -32,7 +29,7 @@ Eventos, formato, prazos e política de reentrega abaixo podem mudar até a entr
 | `venda.criada` | Uma venda sua foi criada. |
 | `venda.confirmada` | O gateway confirmou o pagamento. A venda está `CONFIRMED`. |
 | `venda.cancelada` | A venda foi cancelada. |
-| `venda.expirada` | O prazo de pagamento venceu sem pagamento (veja [Reserva de vaga](/reserva-de-vaga)). |
+| `venda.expirada` <Badge icon="calendar" color="purple">Planejado</Badge> | O prazo de pagamento venceu sem pagamento (veja [Reserva de vaga](/reserva-de-vaga)). Depende da reserva de vaga com expiração. |
 
 ### Requisição enviada ao seu endpoint
 

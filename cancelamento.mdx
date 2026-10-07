@@ -1,71 +1,17 @@
 ---
 title: "Cancelamento e estorno"
-description: "Cancelar uma venda com taxa fixa e estorno manual, e o cancelamento com prévia e estorno automático planejado."
+description: "Prévia do cancelamento, faixas de retenção por antecedência e estorno automático no gateway."
 ---
-
-Esta página tem duas partes: o cancelamento disponível e o cancelamento com estorno automático, planejado.
-
-## Cancelamento atual
-
-<Badge icon="circle-check" color="green">Disponível</Badge>
-
-### `POST /venda/cancelamento/{venda_id}`
-
-Cancela a venda **na hora**, sem etapa de confirmação. Sem corpo.
-
-Como funciona:
-
-- A venda é cancelada se `is_cancelable` for `true` e ela ainda não estiver cancelada.
-- A taxa de cancelamento é **fixa em 20 % do valor da venda**. O valor aparece em `total_cancelation_fee`, na venda e na resposta.
-- **O estorno é manual.** A API não devolve dinheiro: a equipe iBarco faz a devolução, descontando a taxa. Para acompanhar um estorno, fale com contato@ibarco.com.br informando o id da venda.
-
-```bash
-curl -X POST "https://sandbox-api.ibarco.com.br/api/venda/cancelamento/120345?t=<token_acesso>" \
-  -H "X-Api-Key: SUA_CHAVE_DE_API"
-```
-
-Resposta `200`:
-
-```json
-{
-  "status": "success",
-  "message": "Reserva cancelada!",
-  "total_cancelation_fee": "150.00"
-}
-```
-
-Erros:
-
-| Status | Quando | Corpo |
-|---|---|---|
-| `400` | Venda já cancelada. | `{"status": "error", "message": "Essa reserva já estava cancelada."}` |
-| `400` | Venda não cancelável. | `{"status": "error", "message": "Esta reserva não pode ser cancelada."}` |
-| `401` | Sem credencial. | `{"detail": "As credenciais de autenticação não foram fornecidas."}` |
-| `403` | Sem token da venda e sem ser equipe ou comprador. | `{"detail": "Sem acesso a esta venda. Envie o token da venda (?t=) ou autentique-se."}` |
-| `404` | Venda inexistente. | `{"error": "Venda não encontrada."}` |
-
-### Acesso à venda
 
 <Badge icon="clock" color="orange">Em breve</Badge>
 
-Cancelar exige a chave de API (ou login) **e** a prova de acesso à venda: o token da venda em `?t=<token_acesso>` (ou `"t"` no corpo JSON), um usuário da equipe iBarco ou o próprio comprador autenticado. A chave sozinha não basta e, sem a prova, a resposta é `403`. As regras completas, com a origem do token, estão em [Pagamento: Acesso à venda](/pagamento#acesso-à-venda).
+O cancelamento aplica uma faixa de retenção conforme a antecedência da viagem, oferece uma prévia antes de cancelar e pede o estorno direto ao gateway de pagamento.
 
-<Danger>
-**Ação imediata e irreversível**
+<Note>
+Até o próximo deploy, o cancelamento aplica taxa fixa de 20 % do valor da venda e o estorno é manual: fale com contato@ibarco.com.br informando o id da venda.
+</Note>
 
-A chamada cancela de verdade. Não existe prévia nem desfazer. Confirme com o cliente antes de chamar.
-</Danger>
-
-## Cancelamento com estorno automático
-
-<Badge icon="calendar" color="purple">Planejado</Badge>
-
-A taxa fixa dá lugar a faixas de antecedência, uma prévia passa a existir antes de cancelar e o estorno é pedido direto ao gateway.
-
-<Warning>
-**Valores propostos, sujeitos a confirmação**
-
-Faixas de retenção, prazos de crédito e regras abaixo podem mudar até a entrega. Não os mostre ao cliente final como regra vigente.
+## Faixas de retenção
 
 | Antecedência em relação à saída | Retenção | Devolução |
 |---|---|---|
@@ -81,25 +27,27 @@ Prazo para o crédito do estorno:
 | Pix | até 1 dia útil |
 | Cartão de crédito | em 1 a 2 faturas, conforme a bandeira |
 
-O parceiro só cancela venda criada por ele.
-</Warning>
+## Acesso à venda
 
-### Prévia do cancelamento
+Os dois endpoints exigem a chave de API (ou login) **e** a prova de acesso à venda: o token da venda em `?t=<token_acesso>` (ou `"t"` no corpo JSON do `POST`), um usuário da equipe iBarco ou o próprio comprador autenticado. A chave sozinha não basta e, sem a prova, a resposta é `403`. As regras completas, com a origem do token, estão em [Pagamento: Acesso à venda](/pagamento#acesso-à-venda).
 
-#### `GET /venda/cancelamento/{venda_id}`
+## Prévia do cancelamento
 
-Diz se pode cancelar e quanto volta, sem cancelar nada.
+### `GET /venda/cancelamento/{venda_id}`
+
+Diz se a venda pode ser cancelada e quanto volta, sem cancelar nada.
 
 ```bash
-curl https://sandbox-api.ibarco.com.br/api/venda/cancelamento/120345 \
+curl "https://sandbox-api.ibarco.com.br/api/venda/cancelamento/120345?t=<token_acesso>" \
   -H "X-Api-Key: SUA_CHAVE_DE_API"
 ```
 
-Resposta `200` proposta:
+Resposta `200`:
 
 ```json
 {
   "pode_cancelar": true,
+  "motivo": null,
   "antecedencia_horas": 1056,
   "percentual_retido": 10,
   "valor_retido": "75.00",
@@ -110,16 +58,66 @@ Resposta `200` proposta:
 
 | Campo | Descrição |
 |---|---|
-| `pode_cancelar` | `false` se a viagem já partiu, a venda já foi cancelada ou não é sua. |
-| `antecedencia_horas` | Horas entre agora e a saída. |
+| `pode_cancelar` | `false` se a viagem já partiu, a venda já foi cancelada ou não é cancelável. |
+| `motivo` | Texto explicando por que não pode cancelar, ou `null`. |
+| `antecedencia_horas` | Horas inteiras entre agora e a saída. Pode ser negativo quando a viagem já partiu. |
 | `percentual_retido` | Percentual retido pela faixa de antecedência. |
-| `valor_retido`, `valor_estornado` | Em R$. |
-| `prazo_credito` | Quando o dinheiro volta ao cliente. |
+| `valor_retido`, `valor_estornado` | Em R$, como texto com duas casas decimais. |
+| `prazo_credito` | Quando o dinheiro volta ao cliente, ou `null`. |
 
-### Cancelar com estorno
+Para uma venda ainda não paga, `valor_retido` e `valor_estornado` vêm `"0.00"` e `prazo_credito` vem `null`.
 
-#### `POST /venda/cancelamento/{venda_id}`
+## Cancelar com estorno
 
-Mesmo caminho do cancelamento atual. Passa a aplicar a faixa de antecedência e a pedir o estorno ao gateway na mesma chamada. A resposta trará os mesmos campos da prévia. Venda criada por outro parceiro, ou de viagem já partida, é recusada com erro.
+### `POST /venda/cancelamento/{venda_id}`
 
-Quando entrar, a mudança na taxa e na resposta será avisada com 30 dias de antecedência, conforme a [política de versionamento](/index#política-de-versionamento).
+Cancela a venda **na hora**, sem etapa de confirmação, aplica a faixa de antecedência e pede o estorno ao gateway na mesma chamada. Sem corpo.
+
+```bash
+curl -X POST "https://sandbox-api.ibarco.com.br/api/venda/cancelamento/120345?t=<token_acesso>" \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+Resposta `200`:
+
+```json
+{
+  "status": "success",
+  "message": "Reserva cancelada!",
+  "total_cancelation_fee": "75.00",
+  "antecedencia_horas": 1056,
+  "percentual_retido": 10,
+  "valor_retido": "75.00",
+  "valor_estornado": "675.00",
+  "prazo_credito": "Pix: até 1 dia útil",
+  "estorno": {"gateway": "asaas", "id": "<id do estorno>"}
+}
+```
+
+| Campo | Descrição |
+|---|---|
+| `total_cancelation_fee` | Igual a `valor_retido`. |
+| `estorno.gateway` | `"asaas"`, `"stripe"` ou `null`. |
+| `estorno.id` | Id do estorno no gateway, ou `null`. |
+
+Venda não paga é cancelada sem estorno: `estorno.gateway` e `estorno.id` vêm `null`. Retenção de 100 % também não gera estorno.
+
+<Danger>
+**Ação imediata e irreversível**
+
+O `POST` cancela de verdade. Use a prévia e confirme com o cliente antes de chamar.
+</Danger>
+
+### Erros do cancelamento
+
+| Status | Quando | Corpo |
+|---|---|---|
+| `400` | Venda já cancelada. | `{"status": "error", "message": "Essa reserva já estava cancelada."}` |
+| `400` | Venda não cancelável. | `{"status": "error", "message": "Esta reserva não pode ser cancelada."}` |
+| `400` | Viagem já partiu. | `{"status": "error", "message": "Esta viagem já partiu e a reserva não pode mais ser cancelada."}` |
+| `401` | Sem credencial. | `{"detail": "As credenciais de autenticação não foram fornecidas."}` |
+| `403` | Sem token da venda e sem ser equipe ou comprador. | `{"detail": "Sem acesso a esta venda. Envie o token da venda (?t=) ou autentique-se."}` |
+| `404` | Venda inexistente. | `{"error": "Venda não encontrada."}` |
+| `502` | O gateway recusou o estorno. | `{"status": "error", "message": "Não foi possível processar o estorno no gateway. Tente novamente ou fale com o suporte.", "detalhe": "<mensagem do gateway>"}` |
+
+No `502`, a venda **não** é cancelada e você pode repetir a chamada.

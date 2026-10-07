@@ -84,7 +84,8 @@ def mensagem_de_erro(corpo: dict) -> str:
 | `422` | Mesma `Idempotency-Key` com corpo diferente (planejado). | Gere uma chave nova para a operação nova. |
 | `429` | Limite de requisições estourado. | Espere o tempo de `Retry-After` e repita. |
 | `500` | Falha interna. | Repita com espera crescente. Persistindo, avise o suporte. |
-| `502`, `503`, `504` | Indisponibilidade temporária. | Repita com espera crescente. |
+| `502` | No cancelamento, o gateway recusou o estorno e a venda não foi cancelada. Veja [Cancelamento](/cancelamento#erros-do-cancelamento). Fora dele, indisponibilidade temporária. | Tente de novo ou fale com o suporte. |
+| `503`, `504` | Indisponibilidade temporária. | Repita com espera crescente. |
 
 Erros do gateway de pagamento (CPF recusado, cartão negado) chegam com o status devolvido pelo gateway, em geral `400`, e o detalhe em `details`. Veja [Pagamento](/pagamento).
 
