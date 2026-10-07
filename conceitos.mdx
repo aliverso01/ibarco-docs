@@ -1,0 +1,183 @@
+---
+title: "Conceitos"
+description: "Como a iBarco modela viagens, acomodações, preço, faixas etárias, trava de antecedência, vagas e status da venda."
+---
+
+<Badge icon="circle-check" color="green">Disponível</Badge>
+
+Antes de integrar, entenda como a iBarco modela uma viagem de barco. O ponto que mais confunde: **cada acomodação de uma mesma saída é uma viagem diferente**.
+
+## Entidades
+
+| Entidade | O que é | Campos principais |
+|---|---|---|
+| **Destino** | Uma cidade atendida (Belém, Santarém, Manaus...). | `id`, `nome`, `foto` |
+| **Porto** | Cais ou terminal de embarque dentro de uma cidade. | `porto_id`, `porto` (nome), `cidade_id`, `cidade`, endereço, `latitude`, `longitude` |
+| **Trecho** | Par origem → destino entre duas cidades. | `id`, `origem`, `destino`, `origem_nome`, `destino_nome`, `valor_apartir` |
+| **Embarcação** (barco) | O navio que faz a viagem. | `id`, `nome_embarcacao`, `capacidade`, `comodidades`, `politica_preco`, `galeria` |
+| **Tipo de passagem** (acomodação) | Rede, Suíte, Poltrona, Camarote... | `id`, `tipo`, `usa_assento`, `pessoas_por_unidade`, `antecedencia_minima_dias`, `antecedencia_minima_horas` |
+| **Viagem** | Uma saída vendável: trecho + embarcação + data e hora + portos + **uma** acomodação + preço. | `id`, `trecho`, `embarcacao`, `data_saida`, `horario_saida`, `tipo_passagem`, `price`, `desconto`, `preco_final`, `avaliable_seats` |
+| **Venda** | A compra de uma viagem para um ou mais passageiros. | `id`, `viagem`, `passengers`, `valor_final`, `status_reserva` |
+
+```mermaid
+erDiagram
+    DESTINO ||--o{ PORTO : "tem"
+    DESTINO ||--o{ TRECHO : "origem e destino"
+    TRECHO ||--o{ VIAGEM : "percorrido por"
+    EMBARCACAO ||--o{ VIAGEM : "faz"
+    TIPO_PASSAGEM ||--o{ VIAGEM : "acomodacao"
+    PORTO ||--o{ VIAGEM : "saida e chegada"
+    VIAGEM ||--o{ VENDA : "vendida em"
+    VENDA ||--|{ PASSAGEIRO : "leva"
+```
+
+### Uma acomodação, uma viagem
+
+O barco *Comandante Exemplo* sai de Belém para Santarém em 20/11/2026 às 18:00. Ele vende rede, poltrona e suíte. Na API isso aparece como **três viagens**, cada uma com seu `id`, seu `tipo_passagem` e seu `price`:
+
+| `id` | `tipo_passagem.tipo` | `price` |
+|---|---|---|
+| 90311 | Rede | 250.00 |
+| 90312 | Poltrona | 320.00 |
+| 90313 | Suíte | 1100.00 |
+
+O passageiro escolhe a acomodação quando você envia o `id` da viagem certa na compra. Para listar as acomodações de uma saída, use [`GET /viagem/acomodacoes/`](/busca#acomodações-de-uma-saída).
+
+## Preço
+
+O cálculo é sempre feito pela API. Use os valores que ela devolve e não remonte a conta no seu sistema: assim o valor exibido bate com o valor cobrado.
+
+Para cada passageiro:
+
+```text
+desconto_total   = desconto da viagem (%) + desconto da faixa etária (%), limitado entre 0 % e 100 %
+preco_passageiro = price × (1 − desconto_total / 100) × (1 + taxa de serviço / 100)
+```
+
+- `price` é a tarifa cheia da viagem.
+- `desconto` é a promoção da viagem, em %.
+- O desconto da faixa etária vem da política da embarcação (veja abaixo).
+- A **taxa de serviço** é global, em %. Consulte em `GET /global-tax-percentual/1`.
+
+O total da venda é a soma dos passageiros. Um cupom de desconto, quando houver, é aplicado sobre esse subtotal.
+
+### Exemplo
+
+Viagem com `price` 250.00, sem promoção, taxa de serviço de 20 %, criança com 50 % de desconto e idoso com 20 %:
+
+| Passageiro | Desconto | Conta | Preço |
+|---|---|---|---|
+| Adulto | 0 % | 250.00 × 1.00 × 1.20 | 300.00 |
+| Criança | 50 % | 250.00 × 0.50 × 1.20 | 150.00 |
+| Idoso | 20 % | 250.00 × 0.80 × 1.20 | 240.00 |
+
+Dois adultos e uma criança: 300.00 + 300.00 + 150.00 = **750.00**.
+
+### Taxa de serviço
+
+#### `GET /global-tax-percentual/1`
+
+Devolve o percentual vigente. O número no caminho é fixo (`1`): a API sempre devolve a configuração atual.
+
+```bash
+curl https://sandbox-api.ibarco.com.br/api/global-tax-percentual/1 \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+Resposta `200`:
+
+```json
+{
+  "value": 20
+}
+```
+
+Erro `404` com `{"detail": "Nenhum valor de GlobalTaxPercentual encontrado."}` se a configuração não existir.
+
+### Campos de preço na viagem
+
+| Campo | Significado |
+|---|---|
+| `price` | Tarifa cheia, sem taxa. |
+| `preco` | O mesmo `price`, como texto com duas casas. |
+| `desconto` | Promoção da viagem, em %. |
+| `taxa_servico` | Valor da taxa, em R$, para um adulto. |
+| `preco_final` | Preço de um adulto com promoção e taxa. É o valor a exibir. |
+| `preco_original_final` | Preço de um adulto sem promoção, com taxa. Serve de valor "de" riscado. |
+| `faixas_etarias` | Preço por faixa etária, já com tudo aplicado. |
+| `resumo_pax` | Total do grupo, quando você envia `adultos`, `criancas` e `idosos` na busca. |
+
+<Note>
+**Valores monetários**
+
+A API devolve valores em reais (BRL) com duas casas decimais. Conforme o endpoint, um campo de valor chega como texto (`"300.00"`) ou como número (`300.0`). Converta sempre para decimal no seu sistema e aceite os dois formatos.
+</Note>
+
+## Faixas etárias
+
+| `pax_type` | Faixa | Regra de idade |
+|---|---|---|
+| `CH` | Criança | idade **menor que** o limite de criança |
+| `AD` | Adulto | entre os dois limites |
+| `SR` | Idoso | idade **maior ou igual** ao limite de idoso |
+
+Os limites vêm da política de preço da embarcação (`years` em `politica_preco`):
+
+- Para `CH`, `years` é o limite superior **exclusivo**. Com `years = 12`, quem tem 11 anos é criança e quem tem 12 é adulto.
+- Para `SR`, `years` é o limite inferior **inclusivo**. Com `years = 60`, quem tem 60 anos é idoso.
+- Se a embarcação não cadastrou a faixa, valem os padrões **12** (criança) e **60** (idoso).
+
+O desconto de cada faixa é cadastrado por embarcação. Não existe regra fixa: uma embarcação pode dar 100 % para criança e outra, 50 %.
+
+**Como a idade é calculada:** ano atual − ano de nascimento, sem considerar o dia do aniversário. Quem nasceu em 15/12/2014 conta como 12 anos durante todo o ano de 2026.
+
+A API recusa com `400` o passageiro cujo `pax_type` não bate com a idade. Para não errar, use o campo `faixas_etarias` da viagem para escolher o `pax_type`: ele já traz `idade_min` e `idade_max` de cada faixa.
+
+```json
+"faixas_etarias": [
+  {"pax_type": "CH", "rotulo": "Criança", "idade_min": 0, "idade_max": 11, "desconto": 50.0, "preco": 150.0, "cadastrada": true, "politica_id": 12},
+  {"pax_type": "AD", "rotulo": "Adulto", "idade_min": 12, "idade_max": 59, "desconto": 0.0, "preco": 300.0, "cadastrada": false, "politica_id": null},
+  {"pax_type": "SR", "rotulo": "Idoso", "idade_min": 60, "idade_max": null, "desconto": 20.0, "preco": 240.0, "cadastrada": true, "politica_id": 13}
+]
+```
+
+`cadastrada: false` indica que a faixa usa o padrão do sistema, não um cadastro da embarcação. `idade_max: null` significa sem limite.
+
+Se a compra for recusada por idade, ajuste o `pax_type` conforme a mensagem de erro.
+
+### Regra de idade unificada
+
+<Badge icon="calendar" color="purple">Planejado</Badge>
+
+A validação da idade na compra passará a usar a política de preço da própria embarcação da viagem, a mesma exibida em `faixas_etarias`.
+
+## Trava de antecedência
+
+Cada acomodação tem uma antecedência mínima de compra (`antecedencia_minima_dias` + `antecedencia_minima_horas`). Exemplo: rede vende até 3 horas antes da saída; suíte fecha 15 dias antes.
+
+Quando falta menos que isso para a partida, a viagem **sai da busca** e a compra é recusada. Isso evita vender uma passagem que o barco não consegue mais emitir.
+
+O detalhe da viagem (`GET /viagens/{id}/`) informa:
+
+| Campo | Exemplo |
+|---|---|
+| `disponivel_para_venda` | `false` |
+| `motivo_indisponivel` | `"As passagens de Suíte para esta viagem precisam ser compradas com 15 dias de antecedência. O prazo para esta saída já encerrou."` |
+
+Viagem que já partiu: `"Esta viagem já partiu e não está mais disponível para compra."`
+
+## Vagas
+
+O campo `avaliable_seats` (com essa grafia) é a capacidade cadastrada para a viagem. Ele **não** é um saldo que diminui a cada venda. Valores `0` ou `null` significam "não informado". Veja [Reserva de vaga e expiração](/reserva-de-vaga) para o que está planejado.
+
+## Status da venda
+
+| `status_reserva` | Significado |
+|---|---|
+| `CREATED` | Venda criada, aguardando pagamento. |
+| `PENDING` | Mesmo significado de `CREATED`. Trate os dois da mesma forma. |
+| `CONFIRMED` | Pagamento confirmado pelo gateway. Bilhete enviado ao comprador. |
+| `CANCELED` | Venda cancelada. |
+| `EXPIRED` | <Badge icon="calendar" color="purple">Planejado</Badge> Prazo de pagamento venceu e a vaga foi liberada. |
+
+Novos status podem surgir (veja a [política de versionamento](/index#política-de-versionamento)). Trate um valor desconhecido como "aguardando pagamento".

@@ -1,0 +1,30 @@
+name: build
+
+# Só valida. Quem publica é o Mintlify, a partir da branch main.
+on:
+  push:
+  pull_request:
+
+jobs:
+  mint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Build estrito
+        run: npx -y mint validate
+      - name: Links quebrados
+        run: npx -y mint broken-links --check-anchors
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Procurar segredos no histórico
+        run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest \
+            detect --source /repo --redact --verbose

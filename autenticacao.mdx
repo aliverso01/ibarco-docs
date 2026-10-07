@@ -1,0 +1,134 @@
+---
+title: "Autenticação"
+description: "Chave de API para integração entre servidores e token de usuário (JWT) para chamadas em nome de um usuário."
+---
+
+<Badge icon="circle-check" color="green">Disponível</Badge>
+
+Toda chamada precisa de uma credencial. A API aceita duas formas, e basta uma delas por requisição.
+
+| Forma | Header | Para quê |
+|---|---|---|
+| Chave de API | `X-Api-Key: <sua chave>` | Integração servidor a servidor. **Recomendada para parceiros.** |
+| Token de usuário (JWT) | `Authorization: Bearer <access>` | Chamadas em nome de um usuário com login na iBarco. |
+
+Sem credencial válida a resposta é `401`. Com credencial válida mas sem permissão para a operação, `403`. Veja [Erros e limites](/erros).
+
+## Chave de API
+
+A iBarco gera uma chave exclusiva para cada parceiro (peça em contato@ibarco.com.br). Ela identifica a sua empresa em todas as chamadas.
+
+```bash
+curl https://sandbox-api.ibarco.com.br/api/destinos/ \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+Regras de uso:
+
+- **Guarde a chave no servidor.** Nunca a coloque em aplicativo móvel, JavaScript de navegador ou repositório de código. Quem tem a chave fala com a API em nome da sua empresa.
+- Leia a chave de uma variável de ambiente ou de um cofre de segredos.
+- Use sempre HTTPS. A chave trafega em texto no header.
+- Suspeita de vazamento? Peça a **rotação** em contato@ibarco.com.br. A iBarco emite uma chave nova e revoga a antiga.
+
+## Token de usuário (JWT)
+
+Use quando a chamada precisa agir em nome de um usuário com login (por exemplo, a equipe da agência que tem conta na iBarco). Para integração automática entre sistemas, prefira a chave de API.
+
+### Login
+
+#### `POST /login`
+
+Troca e-mail e senha por um par de tokens. Não exige chave de API.
+
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `email` | string | sim | E-mail da conta. |
+| `password` | string | sim | Senha da conta. |
+
+```bash
+curl -X POST https://sandbox-api.ibarco.com.br/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "ana.souza@agencia-exemplo.com.br", "password": "senha-de-exemplo"}'
+```
+
+Resposta `200`:
+
+```json
+{
+  "user_id": 4821,
+  "email": "ana.souza@agencia-exemplo.com.br",
+  "first_name": "Ana",
+  "last_name": "Souza",
+  "photo": null,
+  "access": "<token de acesso>",
+  "refresh": "<token de renovação>"
+}
+```
+
+| Token | Validade | Uso |
+|---|---|---|
+| `access` | 30 minutos | Vai no header `Authorization: Bearer <access>`. |
+| `refresh` | 7 dias | Serve só para obter um novo `access`. |
+
+Erros:
+
+| Status | Quando | Corpo |
+|---|---|---|
+| `401` | E-mail ou senha errados. | `{"detail": "Credenciais inválidas."}` |
+| `500` | Falha interna. | `{"detail": "Erro interno no servidor.", "error": "..."}` |
+
+### Renovar token
+
+#### `POST /token/refresh`
+
+Gera um novo `access` a partir do `refresh`. O `refresh` continua o mesmo até vencer; depois disso, faça login de novo.
+
+```bash
+curl -X POST https://sandbox-api.ibarco.com.br/api/token/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refresh": "<token de renovação>"}'
+```
+
+Resposta `200`:
+
+```json
+{
+  "access": "<novo token de acesso>"
+}
+```
+
+Erro `401` quando o `refresh` é inválido ou venceu:
+
+```json
+{
+  "detail": "O token é inválido ou expirado",
+  "code": "token_not_valid"
+}
+```
+
+### Verificar credencial
+
+#### `GET /verify-token`
+
+Confere se a credencial enviada é aceita. Funciona com Bearer ou com chave de API.
+
+```bash
+curl https://sandbox-api.ibarco.com.br/api/verify-token \
+  -H "Authorization: Bearer <token de acesso>"
+```
+
+Resposta `200`:
+
+```json
+{
+  "detail": "Token is valid"
+}
+```
+
+Credencial ausente ou inválida: `401`.
+
+## Boas práticas
+
+- Renove o `access` antes de vencer, ou ao receber `401`, e repita a chamada uma vez.
+- Não registre tokens nem a chave em logs.
+- Use a chave própria de cada ambiente (sandbox ou produção). Não misture chaves entre ambientes.

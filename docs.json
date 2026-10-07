@@ -1,72 +1,69 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "API iBarco",
+  "description": "Documentação da API iBarco para parceiros integradores: busca, compra e pagamento de passagens fluviais.",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#1565c0",
+    "light": "#42a5f5",
+    "dark": "#0d47a1"
   },
   "favicon": "/favicon.svg",
-  "navigation": {
-    "pages": [
-      {
-        "group": "Getting Started",
-        "pages": [
-          "index",
-          "quickstart"
-        ]
-      }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
   "logo": {
     "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "dark": "/logo/dark.svg",
+    "href": "/"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Começar",
+        "pages": [
+          "index",
+          "primeiros-passos",
+          "autenticacao",
+          "conceitos"
+        ]
+      },
+      {
+        "group": "Guias",
+        "pages": [
+          "busca",
+          "compra",
+          "pagamento",
+          "cancelamento",
+          "reserva-de-vaga",
+          "webhooks"
+        ]
+      },
+      {
+        "group": "Referência",
+        "pages": [
+          "referencia",
+          "erros",
+          "postman",
+          "changelog"
+        ]
+      }
+    ]
   },
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:support@mintlify.com"
+        "label": "Suporte",
+        "href": "mailto:contato@ibarco.com.br"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "label": "Site iBarco",
+      "href": "https://ibarco.com.br"
     }
   },
   "contextual": {
     "options": [
       "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
+      "view"
     ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
   }
 }

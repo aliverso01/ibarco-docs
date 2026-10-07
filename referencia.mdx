@@ -1,0 +1,70 @@
+---
+title: "Referência de endpoints"
+description: "Todos os endpoints da API iBarco para parceiros, com autenticação exigida e status."
+---
+
+Todos os caminhos são relativos a `https://sandbox-api.ibarco.com.br/api`.
+
+Autenticação: **Chave** = `X-Api-Key`; **Bearer** = `Authorization: Bearer <access>`; **Chave ou Bearer** = qualquer uma das duas; **Nenhuma** = não exige credencial.
+
+## Autenticação
+
+| Método | Caminho | Autenticação | Status | Seção |
+|---|---|---|---|---|
+| `POST` | `/login` | Nenhuma | <Badge icon="circle-check" color="green">Disponível</Badge> | [Login](/autenticacao#login) |
+| `POST` | `/token/refresh` | Nenhuma | <Badge icon="circle-check" color="green">Disponível</Badge> | [Renovar token](/autenticacao#renovar-token) |
+| `GET` | `/verify-token` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Verificar credencial](/autenticacao#verificar-credencial) |
+
+## Busca e catálogo
+
+| Método | Caminho | Autenticação | Status | Seção |
+|---|---|---|---|---|
+| `GET` | `/destinos/` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Destinos](/busca#destinos) |
+| `GET` | `/portos/` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Portos](/busca#portos) |
+| `GET` | `/portos/{id}/` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Portos](/busca#portos) |
+| `GET` | `/locais/` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Locais](/busca#locais-para-autocompletar) |
+| `GET` | `/barcos/` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Embarcações](/busca#embarcações) |
+| `GET` | `/barcos/{id}/` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Embarcações](/busca#embarcações) |
+| `GET` | `/barcos/rotas/{barco_id}/` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Rotas da embarcação](/busca#rotas-da-embarcação) |
+| `GET` | `/politica-faixa-etaria/` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Faixas etárias da embarcação](/busca#faixas-etárias-da-embarcação) |
+| `GET` | `/tipo-passagem/` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Acomodações](/busca#acomodações) |
+| `GET` | `/viagem/acomodacoes/` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Acomodações de uma saída](/busca#acomodações-de-uma-saída) |
+| `GET` | `/datas-disponiveis/` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Datas com saída](/busca#datas-com-saída) |
+| `GET` | `/viagens/` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Buscar viagens](/busca#buscar-viagens) |
+| `GET` | `/viagens/{id}/` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Detalhe da viagem](/busca#detalhe-da-viagem) |
+| `GET` | `/viagens/{id}/disponibilidade` | Chave ou Bearer | <Badge icon="calendar" color="purple">Planejado</Badge> | [Disponibilidade da viagem](/reserva-de-vaga#disponibilidade-da-viagem) |
+| `GET` | `/global-tax-percentual/1` | Nenhuma | <Badge icon="circle-check" color="green">Disponível</Badge> | [Taxa de serviço](/conceitos#taxa-de-serviço) |
+
+## Compra
+
+| Método | Caminho | Autenticação | Status | Seção |
+|---|---|---|---|---|
+| `POST` | `/vendas` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Criar venda](/compra#criar-venda) |
+| `GET` | `/vendas/{id}` | Chave ou Bearer (+ `?t=` para dados completos) | <Badge icon="circle-check" color="green">Disponível</Badge> | [Consultar a venda](/compra#consultar-a-venda) |
+| `POST` | `/cupons/validar` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Validar cupom](/compra#validar-cupom) |
+| Header | `Idempotency-Key` | – | <Badge icon="calendar" color="purple">Planejado</Badge> | [Idempotência](/compra#idempotência) |
+
+## Pagamento
+
+| Método | Caminho | Autenticação | Status | Seção |
+|---|---|---|---|---|
+| `POST` | `/venda/payment-link/{venda_id}` | Chave ou Bearer + token da venda | <Badge icon="circle-check" color="green">Disponível</Badge> | [Link de pagamento](/pagamento#link-de-pagamento) |
+| `POST` | `/venda/process-payment/{venda_id}` | Chave ou Bearer + token da venda | <Badge icon="circle-check" color="green">Disponível</Badge> | [Pix ou cartão](/pagamento#pix-ou-cartão-direto) |
+| `POST` | `/venda/stripe-checkout/{venda_id}` | Chave ou Bearer + token da venda | <Badge icon="circle-check" color="green">Disponível</Badge> | [Stripe Checkout](/pagamento#stripe-checkout) |
+| `GET` | `/venda/check-status/{venda_id}` | Chave ou Bearer + token da venda | <Badge icon="circle-check" color="green">Disponível</Badge> | [Acompanhar a confirmação](/pagamento#acompanhar-a-confirmação) |
+
+A exigência do token da venda nesses endpoints está <Badge icon="clock" color="orange">Em breve</Badge>. Veja [Acesso à venda](/pagamento#acesso-à-venda).
+
+## Cancelamento
+
+| Método | Caminho | Autenticação | Status | Seção |
+|---|---|---|---|---|
+| `POST` | `/venda/cancelamento/{venda_id}` | Chave ou Bearer + token da venda | <Badge icon="circle-check" color="green">Disponível</Badge> (taxa fixa, estorno manual) | [Cancelamento atual](/cancelamento#cancelamento-atual) |
+| `GET` | `/venda/cancelamento/{venda_id}` | Chave ou Bearer | <Badge icon="calendar" color="purple">Planejado</Badge> | [Prévia do cancelamento](/cancelamento#prévia-do-cancelamento) |
+| `POST` | `/venda/cancelamento/{venda_id}` com estorno automático | Chave ou Bearer | <Badge icon="calendar" color="purple">Planejado</Badge> | [Estorno automático](/cancelamento#cancelamento-com-estorno-automático) |
+
+## Webhooks de saída
+
+| Evento | Status | Seção |
+|---|---|---|
+| `venda.criada`, `venda.confirmada`, `venda.cancelada`, `venda.expirada` | <Badge icon="calendar" color="purple">Planejado</Badge> | [Webhooks](/webhooks) |

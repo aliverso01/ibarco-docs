@@ -1,0 +1,916 @@
+{
+  "info": {
+    "name": "API iBarco para parceiros",
+    "description": "Coleção da API iBarco para parceiros. Preencha a variável api_key (Current value) com a sua chave. Documentação: veja a página Coleção Postman. base_url aponta para o sandbox. Para produção, troque base_url e api_key pelos valores de produção; lá, criar venda, pagar e cancelar têm efeito real.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://sandbox-api.ibarco.com.br/api",
+      "type": "string"
+    },
+    {
+      "key": "api_key",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "viagem_id",
+      "value": "90311",
+      "type": "string"
+    },
+    {
+      "key": "barco_id",
+      "value": "31",
+      "type": "string"
+    },
+    {
+      "key": "venda_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token_acesso",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Autenticação",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "description": "Troca e-mail e senha por tokens JWT. Não exige chave de API.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ana.souza@agencia-exemplo.com.br\",\n  \"password\": \"senha-de-exemplo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Renovar token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/token/refresh",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "token",
+                "refresh"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"<token de renovação>\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Verificar credencial",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/verify-token",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "verify-token"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Busca",
+      "item": [
+        {
+          "name": "Destinos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/destinos/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "destinos",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Portos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/portos/?page_size=200",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "portos",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "page_size",
+                  "value": "200"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Locais (autocompletar)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/locais/?busca=santar&lado=destino",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "locais",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "busca",
+                  "value": "santar"
+                },
+                {
+                  "key": "lado",
+                  "value": "destino"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Embarcações",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/barcos/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "barcos",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Embarcação",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/barcos/{{barco_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "barcos",
+                "{{barco_id}}",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Rotas da embarcação",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/barcos/rotas/{{barco_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "barcos",
+                "rotas",
+                "{{barco_id}}",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Faixas etárias da embarcação",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/politica-faixa-etaria/?barco={{barco_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "politica-faixa-etaria",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "barco",
+                  "value": "{{barco_id}}"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Tipos de acomodação",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tipo-passagem/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tipo-passagem",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Acomodações de uma saída",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/viagem/acomodacoes/?embarcacao={{barco_id}}&data_saida=2026-11-20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "viagem",
+                "acomodacoes",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "embarcacao",
+                  "value": "{{barco_id}}"
+                },
+                {
+                  "key": "data_saida",
+                  "value": "2026-11-20"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Datas com saída",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/datas-disponiveis/?barco_id={{barco_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "datas-disponiveis",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "barco_id",
+                  "value": "{{barco_id}}"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Buscar viagens",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/viagens/?origem=1&destino=2&data_saida=2026-11-20&adultos=2&criancas=1&idosos=0",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "viagens",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "origem",
+                  "value": "1"
+                },
+                {
+                  "key": "destino",
+                  "value": "2"
+                },
+                {
+                  "key": "data_saida",
+                  "value": "2026-11-20"
+                },
+                {
+                  "key": "adultos",
+                  "value": "2"
+                },
+                {
+                  "key": "criancas",
+                  "value": "1"
+                },
+                {
+                  "key": "idosos",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Detalhe da viagem",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/viagens/{{viagem_id}}/?adultos=2&criancas=1&idosos=0",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "viagens",
+                "{{viagem_id}}",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "adultos",
+                  "value": "2"
+                },
+                {
+                  "key": "criancas",
+                  "value": "1"
+                },
+                {
+                  "key": "idosos",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Taxa de serviço",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/global-tax-percentual/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "global-tax-percentual",
+                "1"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Compra",
+      "item": [
+        {
+          "name": "Validar cupom",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/cupons/validar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cupons",
+                "validar"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"BEMVINDO10\",\n  \"viagem\": 90311,\n  \"quantidade_adultos\": 2,\n  \"quantidade_criancas\": 1,\n  \"quantidade_idosos\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Criar venda",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/vendas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "vendas"
+              ]
+            },
+            "description": "Cria a venda e envia e-mail ao comprador (em produção, com efeito real). Guarde id e token_acesso nas variáveis venda_id e token_acesso.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"viagem\": 90311,\n  \"billing_name\": \"Maria da Silva Exemplo\",\n  \"billing_email\": \"maria.exemplo@email-exemplo.com.br\",\n  \"billing_phone\": \"91999990000\",\n  \"billing_cpf\": \"000.000.000-00\",\n  \"quantidade_adultos\": 2,\n  \"quantidade_criancas\": 1,\n  \"quantidade_idosos\": 0,\n  \"passengers\": [\n    {\n      \"first_name\": \"Maria\",\n      \"last_name\": \"da Silva Exemplo\",\n      \"born_date\": \"1988-04-12\",\n      \"document_type\": \"CPF\",\n      \"document\": \"000.000.000-00\",\n      \"pax_type\": \"AD\"\n    },\n    {\n      \"first_name\": \"João\",\n      \"last_name\": \"da Silva Exemplo\",\n      \"born_date\": \"1986-09-30\",\n      \"document_type\": \"RG\",\n      \"document\": \"0000000\",\n      \"pax_type\": \"AD\"\n    },\n    {\n      \"first_name\": \"Lucas\",\n      \"last_name\": \"da Silva Exemplo\",\n      \"born_date\": \"2017-02-05\",\n      \"document_type\": \"RG\",\n      \"document\": \"0000001\",\n      \"pax_type\": \"CH\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consultar venda (completa)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/vendas/{{venda_id}}?t={{token_acesso}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "vendas",
+                "{{venda_id}}"
+              ],
+              "query": [
+                {
+                  "key": "t",
+                  "value": "{{token_acesso}}"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Consultar venda (só status)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/vendas/{{venda_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "vendas",
+                "{{venda_id}}"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pagamento",
+      "item": [
+        {
+          "name": "Link de pagamento",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/venda/payment-link/{{venda_id}}?t={{token_acesso}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "venda",
+                "payment-link",
+                "{{venda_id}}"
+              ],
+              "query": [
+                {
+                  "key": "t",
+                  "value": "{{token_acesso}}"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cpf\": \"000.000.000-00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Pagar com Pix",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/venda/process-payment/{{venda_id}}?t={{token_acesso}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "venda",
+                "process-payment",
+                "{{venda_id}}"
+              ],
+              "query": [
+                {
+                  "key": "t",
+                  "value": "{{token_acesso}}"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_method\": \"PIX\",\n  \"cpf\": \"000.000.000-00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Pagar com cartão",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/venda/process-payment/{{venda_id}}?t={{token_acesso}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "venda",
+                "process-payment",
+                "{{venda_id}}"
+              ],
+              "query": [
+                {
+                  "key": "t",
+                  "value": "{{token_acesso}}"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_method\": \"CREDIT_CARD\",\n  \"creditCard\": {\n    \"holderName\": \"MARIA DA SILVA EXEMPLO\",\n    \"number\": \"4444444444444444\",\n    \"expiryMonth\": \"12\",\n    \"expiryYear\": \"2030\",\n    \"ccv\": \"123\"\n  },\n  \"creditCardHolderInfo\": {\n    \"name\": \"Maria da Silva Exemplo\",\n    \"email\": \"maria.exemplo@email-exemplo.com.br\",\n    \"cpfCnpj\": \"000.000.000-00\",\n    \"postalCode\": \"66000-000\",\n    \"addressNumber\": \"100\",\n    \"phone\": \"91999990000\"\n  },\n  \"installmentCount\": 3,\n  \"installmentValue\": 250.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Stripe Checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/venda/stripe-checkout/{{venda_id}}?t={{token_acesso}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "venda",
+                "stripe-checkout",
+                "{{venda_id}}"
+              ],
+              "query": [
+                {
+                  "key": "t",
+                  "value": "{{token_acesso}}"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Status do pagamento",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/venda/check-status/{{venda_id}}?t={{token_acesso}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "venda",
+                "check-status",
+                "{{venda_id}}"
+              ],
+              "query": [
+                {
+                  "key": "t",
+                  "value": "{{token_acesso}}"
+                }
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cancelamento",
+      "item": [
+        {
+          "name": "Cancelar venda",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/venda/cancelamento/{{venda_id}}?t={{token_acesso}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "venda",
+                "cancelamento",
+                "{{venda_id}}"
+              ],
+              "query": [
+                {
+                  "key": "t",
+                  "value": "{{token_acesso}}"
+                }
+              ]
+            },
+            "description": "Cancela na hora, sem prévia. Taxa fixa de 20 %. Estorno manual pela equipe iBarco."
+          }
+        }
+      ]
+    }
+  ]
+}

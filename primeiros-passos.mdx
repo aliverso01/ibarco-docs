@@ -1,0 +1,99 @@
+---
+title: "Primeiros passos"
+description: "Guia rápido: da credencial à primeira venda confirmada no sandbox."
+---
+
+Este guia leva você da credencial à primeira venda confirmada, no ambiente sandbox (`https://sandbox-api.ibarco.com.br/api`). Cada etapa aponta para a página com todos os detalhes.
+
+## Pré-requisitos
+
+- Uma chave de API da iBarco (veja a etapa 1).
+- Um servidor ou terminal capaz de fazer chamadas HTTPS (os exemplos usam `curl`).
+
+## Da busca à confirmação
+
+<Steps>
+<Step title="Peça as credenciais">
+
+Escreva para **contato@ibarco.com.br** com a razão social e o CNPJ da empresa, o nome e o e-mail do responsável técnico e como você pretende usar a API. Você recebe uma chave de API exclusiva.
+
+Envie a chave no header `X-Api-Key` em todas as chamadas e guarde-a só no servidor. Para conferir se ela é aceita:
+
+```bash
+curl https://sandbox-api.ibarco.com.br/api/verify-token \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+Detalhes em [Autenticação](/autenticacao).
+
+</Step>
+<Step title="Busque uma viagem">
+
+Busque as saídas de um trecho numa data, informando a composição do grupo:
+
+```bash
+curl "https://sandbox-api.ibarco.com.br/api/viagens/?origem=1&destino=2&data_saida=2026-11-20&adultos=2&criancas=1&idosos=0" \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+Cada item de `results.data` é uma viagem (uma acomodação de uma saída). Anote o `id`, confira `disponivel_para_venda` e use `faixas_etarias` para escolher o `pax_type` de cada passageiro. O total do grupo vem em `resumo_pax.preco_total`.
+
+Detalhes em [Busca](/busca) e [Conceitos](/conceitos).
+
+</Step>
+<Step title="Crie a venda">
+
+Envie o `id` da viagem, os dados do comprador e a lista de passageiros:
+
+```bash
+curl -X POST https://sandbox-api.ibarco.com.br/api/vendas \
+  -H "X-Api-Key: SUA_CHAVE_DE_API" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "viagem": 90311,
+    "billing_name": "Maria da Silva Exemplo",
+    "billing_email": "maria.exemplo@email-exemplo.com.br",
+    "billing_cpf": "000.000.000-00",
+    "quantidade_adultos": 1,
+    "quantidade_criancas": 0,
+    "quantidade_idosos": 0,
+    "passengers": [
+      {"first_name": "Maria", "last_name": "da Silva Exemplo", "born_date": "1988-04-12", "document_type": "CPF", "document": "000.000.000-00", "pax_type": "AD"}
+    ]
+  }'
+```
+
+A resposta `201` traz a venda em `CREATED`, com o `id`, o `valor_final` a cobrar e o `token_acesso`. Guarde o `id` e o `token_acesso`: eles são usados nas próximas etapas.
+
+Detalhes em [Compra](/compra).
+
+</Step>
+<Step title="Cobre o cliente">
+
+O caminho mais simples é o link de pagamento: o cliente paga numa fatura e escolhe a forma de pagamento ali.
+
+```bash
+curl -X POST "https://sandbox-api.ibarco.com.br/api/venda/payment-link/120345?t=<token_acesso>" \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+Envie o `checkoutUrl` da resposta ao cliente. Para Pix com QR Code, cartão direto ou Stripe, veja [Pagamento](/pagamento).
+
+</Step>
+<Step title="Acompanhe a confirmação">
+
+A confirmação não vem na resposta da cobrança: o gateway avisa a iBarco, que muda a venda para `CONFIRMED` e envia o bilhete ao comprador. Consulte o status até receber `CONFIRMED` ou `CANCELED`:
+
+```bash
+curl "https://sandbox-api.ibarco.com.br/api/venda/check-status/120345?t=<token_acesso>" \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+Frequência recomendada e demais detalhes em [Acompanhar a confirmação](/pagamento#acompanhar-a-confirmação).
+
+</Step>
+</Steps>
+
+<Tip>
+Precisa de ajuda? Escreva para [contato@ibarco.com.br](mailto:contato@ibarco.com.br) informando o método, o caminho, o horário aproximado da chamada, o status HTTP e o corpo da resposta.
+</Tip>
