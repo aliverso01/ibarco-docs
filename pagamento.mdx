@@ -1,0 +1,262 @@
+---
+title: "Pagamento"
+description: "Cobrar a venda por link de pagamento, Pix, cartão ou Stripe Checkout, e acompanhar a confirmação."
+---
+
+<Badge icon="circle-check" color="green">Disponível</Badge>
+
+Com a venda criada, você inicia a cobrança do `valor_final`. A iBarco cobra pelo gateway Asaas (Pix, cartão, boleto na fatura) ou pelo Stripe (cartão). Toda venda é paga pelo comprador por um destes caminhos:
+
+| Caminho | Endpoint | Quando usar |
+|---|---|---|
+| Link de pagamento | `POST /venda/payment-link/{venda_id}` | Mais simples. O cliente paga numa fatura do Asaas e escolhe a forma ali. Você não manipula dados de cartão. |
+| Pix ou cartão direto | `POST /venda/process-payment/{venda_id}` | Checkout dentro do seu sistema. |
+| Stripe Checkout | `POST /venda/stripe-checkout/{venda_id}` | Cartão pela página do Stripe. |
+
+Regras comuns:
+
+- **Vencimento:** a cobrança vence em 3 dias ou na data da saída, o que vier antes.
+- **Janela de venda:** se a viagem saiu da janela de venda entre a criação da venda e o pagamento, a cobrança é recusada com `409`.
+- **Token da venda:** todos os endpoints abaixo exigem a prova de acesso à venda (`?t=<token_acesso>`). Veja [Acesso à venda](#acesso-à-venda).
+- **Cada chamada cria uma nova cobrança no gateway.** A venda guarda só a última (`payment_intent_id`). Não repita a chamada sem necessidade.
+- **A confirmação nunca vem na resposta da chamada.** Quem confirma é o gateway, por webhook, para a iBarco. Veja [Acompanhar a confirmação](#acompanhar-a-confirmação).
+
+## Acesso à venda
+
+<Badge icon="clock" color="orange">Em breve</Badge>
+
+Os endpoints `POST /venda/cancelamento/{id}`, `POST /venda/payment-link/{id}`, `POST /venda/process-payment/{id}`, `POST /venda/stripe-checkout/{id}` e `GET /venda/check-status/{id}` exigem autenticação (chave de API no header `X-Api-Key` ou login) **e** uma prova de relação com a venda. **A chave de API sozinha não basta.**
+
+A prova pode ser:
+
+1. O **token da venda**, enviado como `?t=<token>` na URL. Nos `POST` com corpo JSON ele também pode ir no campo `"t"`. O token vem em `token_acesso` na resposta de `POST /vendas` (criação) e de `POST /venda/consultar`, e também nos links `?id=&t=` enviados por e-mail. Vale por 30 dias.
+2. Um usuário da equipe iBarco autenticado.
+3. O próprio comprador autenticado.
+
+Sem nenhuma delas, a resposta é `403` e nada é alterado:
+
+```json
+{
+  "detail": "Sem acesso a esta venda. Envie o token da venda (?t=) ou autentique-se."
+}
+```
+
+`GET /venda/check-status/{id}` exige credencial: sem chave nem login, responde `401`.
+
+Os exemplos desta página já incluem o `?t=`. O [Cancelamento](/cancelamento#acesso-à-venda) segue a mesma regra.
+
+## Link de pagamento
+
+### `POST /venda/payment-link/{venda_id}`
+
+Cria uma cobrança no Asaas e devolve o link da fatura.
+
+| Campo do corpo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `cpf` | string | não | CPF do pagador. Substitui o `billing_cpf` da venda. Necessário se a venda não tiver CPF nem CNPJ. |
+
+```bash
+curl -X POST "https://sandbox-api.ibarco.com.br/api/venda/payment-link/120345?t=<token_acesso>" \
+  -H "X-Api-Key: SUA_CHAVE_DE_API" \
+  -H "Content-Type: application/json" \
+  -d '{"cpf": "000.000.000-00"}'
+```
+
+Resposta `200`:
+
+```json
+{
+  "checkoutUrl": "https://www.asaas.com/i/exemplo123456",
+  "paymentId": "pay_exemplo123456"
+}
+```
+
+Envie `checkoutUrl` ao cliente. Ao pagar, ele volta para a página de sucesso do site iBarco.
+
+## Pix ou cartão direto
+
+### `POST /venda/process-payment/{venda_id}`
+
+Cria a cobrança na forma escolhida.
+
+<Tabs>
+<Tab title="Pix">
+
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `payment_method` | string | sim | `PIX` |
+| `cpf` | string | se a venda não tiver | CPF do pagador. |
+
+```bash
+curl -X POST "https://sandbox-api.ibarco.com.br/api/venda/process-payment/120345?t=<token_acesso>" \
+  -H "X-Api-Key: SUA_CHAVE_DE_API" \
+  -H "Content-Type: application/json" \
+  -d '{"payment_method": "PIX", "cpf": "000.000.000-00"}'
+```
+
+Resposta `200`:
+
+```json
+{
+  "paymentId": "pay_exemplo123456",
+  "pixQrCode": "iVBORw0KGgoAAAANSUhEUgAA...",
+  "pixPayload": "00020101021226820014br.gov.bcb.pix...exemplo"
+}
+```
+
+| Campo | Descrição |
+|---|---|
+| `pixQrCode` | Imagem PNG do QR Code em base64. Exiba com `data:image/png;base64,<pixQrCode>`. |
+| `pixPayload` | Código "copia e cola". |
+
+Se o gateway não devolver o QR Code na hora, a resposta vem como `{"paymentId": "...", "status": "SUCCESS"}`. Nesse caso, use o [link de pagamento](#link-de-pagamento).
+
+</Tab>
+<Tab title="Cartão de crédito">
+
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `payment_method` | string | sim | `CREDIT_CARD` |
+| `cpf` | string | se a venda não tiver | CPF do pagador. |
+| `creditCard.holderName` | string | sim | Nome impresso no cartão. |
+| `creditCard.number` | string | sim | Número do cartão. |
+| `creditCard.expiryMonth` | string | sim | Mês de validade, `MM`. |
+| `creditCard.expiryYear` | string | sim | Ano de validade, `AAAA`. |
+| `creditCard.ccv` | string | sim | Código de segurança. |
+| `creditCardHolderInfo.name` | string | sim | Nome do titular. |
+| `creditCardHolderInfo.email` | string | sim | E-mail do titular. |
+| `creditCardHolderInfo.cpfCnpj` | string | sim | CPF ou CNPJ do titular. |
+| `creditCardHolderInfo.postalCode` | string | sim | CEP do titular. |
+| `creditCardHolderInfo.addressNumber` | string | sim | Número do endereço. |
+| `creditCardHolderInfo.phone` | string | sim | Telefone com DDD. |
+| `installmentCount` | inteiro | não | Número de parcelas. Omitido ou `1`: à vista. |
+| `installmentValue` | decimal | se parcelar | Valor de cada parcela: `valor_final / installmentCount`. |
+
+```bash
+curl -X POST "https://sandbox-api.ibarco.com.br/api/venda/process-payment/120345?t=<token_acesso>" \
+  -H "X-Api-Key: SUA_CHAVE_DE_API" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "payment_method": "CREDIT_CARD",
+    "creditCard": {
+      "holderName": "MARIA DA SILVA EXEMPLO",
+      "number": "4444444444444444",
+      "expiryMonth": "12",
+      "expiryYear": "2030",
+      "ccv": "123"
+    },
+    "creditCardHolderInfo": {
+      "name": "Maria da Silva Exemplo",
+      "email": "maria.exemplo@email-exemplo.com.br",
+      "cpfCnpj": "000.000.000-00",
+      "postalCode": "66000-000",
+      "addressNumber": "100",
+      "phone": "91999990000"
+    },
+    "installmentCount": 3,
+    "installmentValue": 250.00
+  }'
+```
+
+Resposta `200`:
+
+```json
+{
+  "paymentId": "pay_exemplo123456",
+  "status": "SUCCESS"
+}
+```
+
+`SUCCESS` significa que o gateway aceitou a cobrança. A venda só vira `CONFIRMED` quando o gateway confirmar o pagamento.
+
+<Danger>
+**Dados de cartão**
+
+Neste caminho os dados do cartão passam pelo seu servidor. Isso exige que o seu ambiente siga as regras PCI-DSS. Se não for o seu caso, use o [link de pagamento](#link-de-pagamento). Nunca grave número do cartão nem `ccv` em banco ou log.
+</Danger>
+
+</Tab>
+</Tabs>
+
+Erros de `process-payment` e `payment-link`:
+
+| Status | Quando | Corpo |
+|---|---|---|
+| `401` | Sem credencial. | `{"detail": "As credenciais de autenticação não foram fornecidas."}` |
+| `403` | Sem token da venda e sem ser equipe ou comprador. | `{"detail": "Sem acesso a esta venda. Envie o token da venda (?t=) ou autentique-se."}` |
+| `404` | Venda inexistente. | `{"error": "Venda não encontrada."}` |
+| `409` | Viagem saiu da janela de venda. | `{"detail": "<motivo>", "error": "<motivo>"}` |
+| `4xx` | Recusa do gateway (CPF inválido, cartão recusado...). O status é o devolvido pelo gateway. | `{"error": "Erro ao processar pagamento", "details": {...}}` ou `{"error": "<descrição>", "details": {...}}` |
+| `500` | Falha interna. | `{"error": "..."}` |
+
+## Stripe Checkout
+
+### `POST /venda/stripe-checkout/{venda_id}`
+
+Cria uma sessão de pagamento no Stripe (cartão, em BRL) e devolve a URL da página de pagamento. Sem corpo.
+
+```bash
+curl -X POST "https://sandbox-api.ibarco.com.br/api/venda/stripe-checkout/120345?t=<token_acesso>" \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+Resposta `200`:
+
+```json
+{
+  "checkout_url": "https://checkout.stripe.com/c/pay/cs_exemplo123456"
+}
+```
+
+Erros: `400` `{"error": "Valor da venda inválido para pagamento."}`; `403` sem prova de acesso à venda; `404` venda inexistente; `409` fora da janela de venda; `500` falha interna ou Stripe indisponível.
+
+## Acompanhar a confirmação
+
+O pagamento é confirmado pelo gateway, por webhook, direto para a iBarco. Nesse momento a venda muda para `CONFIRMED` e o bilhete é enviado por e-mail ao comprador. O seu sistema descobre a confirmação consultando a API.
+
+O status da venda é alterado apenas pela iBarco: confirmação do pagamento pelo gateway, cancelamento ou equipe iBarco.
+
+### `GET /venda/check-status/{venda_id}`
+
+```bash
+curl "https://sandbox-api.ibarco.com.br/api/venda/check-status/120345?t=<token_acesso>" \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+Resposta `200`:
+
+```json
+{
+  "status_reserva": "CONFIRMED",
+  "payment_intent_id": "pay_exemplo123456"
+}
+```
+
+Erros: `401` sem chave nem login; `403` sem prova de acesso à venda (veja [Acesso à venda](#acesso-à-venda)); `404` `{"error": "Venda não encontrada."}`.
+
+Para os dados completos, use [`GET /vendas/{id}?t=<token_acesso>`](/compra#consultar-a-venda).
+
+Recomendações de consulta:
+
+- Pix com o cliente na tela: consulte a cada 5 segundos por até 15 minutos.
+- Depois disso, ou para cartão e link de pagamento: a cada 10 minutos até o vencimento da cobrança.
+- Pare ao receber `CONFIRMED` ou `CANCELED`.
+- Respeite o [limite de requisições](/erros#limite-de-requisições).
+
+Quando os [webhooks de saída](/webhooks) estiverem disponíveis, a consulta periódica passa a ser só uma rede de segurança.
+
+## Método de pagamento gravado
+
+<Badge icon="circle-check" color="green">Disponível</Badge>
+
+O campo `metodo_pagamento` da venda registra a forma usada.
+
+| Valor atual | Quando | Valor planejado |
+|---|---|---|
+| `null` | Ainda não iniciou cobrança, ou usou o link de pagamento. | `null` |
+| `Pix` | `process-payment` com `PIX`. | `PIX` |
+| `Credito` | `process-payment` com `CREDIT_CARD` à vista. | `CREDITO` |
+| `Credito Parcelado` | `process-payment` com `CREDIT_CARD` parcelado. | `CREDITO_PARCELADO` |
+| `Stripe` | `stripe-checkout`. | `STRIPE` |
+
+<Badge icon="calendar" color="purple">Planejado</Badge> os valores passam a ser o enum da terceira coluna. Compare sem diferenciar maiúsculas e aceite os dois formatos durante a transição.

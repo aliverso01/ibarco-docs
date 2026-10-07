@@ -1,55 +1,56 @@
-# Mintlify Starter Kit
+# ibarco-docs
 
-Use the starter kit to get your docs deployed and ready to customize.
+Documentação pública da API iBarco para parceiros integradores (agências, operadoras e outros canais de venda): busca, compra, pagamento e cancelamento de passagens fluviais. Feita com [Mintlify](https://mintlify.com): páginas em MDX (pt-BR) e configuração em `docs.json`.
 
-Click the green **Use this template** button at the top of this repo to copy the Mintlify starter kit. The starter kit contains examples with
+## Rodar localmente
 
-- Guide pages
-- Navigation
-- Customizations
-- API reference pages
-- Use of popular components
-
-**[Follow the full quickstart guide](https://starter.mintlify.com/quickstart)**
-
-## AI-assisted writing
-
-Set up your AI coding tool to work with Mintlify:
+Requer Node.js 20 ou mais novo.
 
 ```bash
-npx skills add https://mintlify.com/docs
+npx mint dev            # prévia em http://localhost:3000, recarrega a cada arquivo salvo
+npx mint validate       # build estrito: falha em qualquer erro ou aviso
+npx mint broken-links --check-anchors   # links internos e âncoras quebrados
 ```
 
-This command installs Mintlify's documentation skill for your configured AI tools like Claude Code, Cursor, Windsurf, and others. The skill includes component reference, writing standards, and workflow guidance.
+Antes de abrir merge, `mint validate` e `mint broken-links` precisam passar sem erro.
 
-See the [AI tools guides](/ai-tools) for tool-specific setup.
+## Estrutura
 
-## Development
+| Caminho | O que é |
+|---|---|
+| `docs.json` | Nome, cores, logos, navbar e navegação (grupos Começar, Guias, Referência). |
+| `*.mdx` | Páginas. Cada uma tem `title` e `description` no frontmatter. |
+| `postman/ibarco-api.postman_collection.json` | Coleção Postman v2.1, apontando para o sandbox e sem credenciais. |
+| `logo/`, `favicon.svg` | Identidade visual. |
+| `AGENTS.md` | Regras de conteúdo e de edição, para pessoas e agentes. |
+| `.github/workflows/build.yml` | CI: `mint validate`, `mint broken-links` e `gitleaks`. Não publica nada. |
 
-Install the [Mintlify CLI](https://www.npmjs.com/package/mint) to preview your documentation changes locally. To install, use the following command:
+## Selos de status
 
+Toda página ou seção leva um selo logo abaixo do título. São três valores, sempre neste formato:
+
+```mdx
+<Badge icon="circle-check" color="green">Disponível</Badge>
+<Badge icon="clock" color="orange">Em breve</Badge>
+<Badge icon="calendar" color="purple">Planejado</Badge>
 ```
-npm i -g mint
-```
 
-Run the following command at the root of your documentation, where your `docs.json` is located:
+- **Disponível:** em produção.
+- **Em breve:** comportamento que entra no próximo deploy.
+- **Planejado:** desenho proposto. Os valores ainda não decididos (prazos, percentuais, códigos) ficam num `<Warning>` que começa com **Valores propostos, sujeitos a confirmação**.
 
-```
-mint dev
-```
+Ao entregar um recurso, troque o selo, remova o aviso de valores propostos, atualize a tabela "Estado da API" em `index.mdx`, a `referencia.mdx` e o `changelog.mdx`.
 
-View your local preview at `http://localhost:3000`.
+## Credenciais
 
-## Publishing changes
+Nunca coloque credencial real (chave de API, token, senha, segredo de webhook) em página, exemplo ou na coleção Postman. Use os marcadores `SUA_CHAVE_DE_API`, `<token_acesso>` e similares. O CI roda `gitleaks` em todo push.
 
-Install our GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app) to propagate changes from your repo to your deployment. Changes are deployed to production automatically after pushing to the default branch.
+## Publicação
 
-## Need help?
+A hospedagem é do Mintlify. O repositório GitHub `aliverso01/ibarco-docs` fica conectado no dashboard do Mintlify, com a branch de publicação `main`: cada merge na `main` publica o site. A `develop` serve de prévia dos cards em andamento.
 
-### Troubleshooting
+## Fluxo de branches
 
-- If your dev environment isn't running: Run `mint update` to ensure you have the most recent version of the CLI.
-- If a page loads as a 404: Make sure you are running in a folder with a valid `docs.json`.
-
-### Resources
-- [Mintlify documentation](https://mintlify.com/docs)
+- `main`: o que está publicado. Só recebe merge de um humano, depois do teste.
+- `develop`: integração e prévia. Recebe o merge das branches de card.
+- `IT-xxx-resumo`: uma branch por card, criada a partir da `develop` atualizada.

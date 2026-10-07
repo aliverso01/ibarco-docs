@@ -1,0 +1,315 @@
+---
+title: "Compra"
+description: "Criar a venda com a lista de passageiros, validar cupom, consultar a venda e repetir chamadas com segurança."
+---
+
+<Badge icon="circle-check" color="green">Disponível</Badge>
+
+Comprar é criar uma **venda** para uma viagem, com a lista de passageiros. A venda nasce com `status_reserva = "CREATED"`, aguardando pagamento. Depois você inicia a cobrança (veja [Pagamento](/pagamento)).
+
+Antes de criar a venda, confira o detalhe da viagem (`GET /viagens/{id}/`): `disponivel_para_venda` precisa ser `true`, e o `pax_type` de cada passageiro precisa bater com `faixas_etarias`.
+
+## Criar venda
+
+### `POST /vendas`
+
+Também responde em `POST /vendas/`. Autenticação: chave de API ou Bearer.
+
+Corpo (JSON):
+
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `viagem` | inteiro | **sim** | Id da viagem. Define barco, data, trecho e acomodação. |
+| `billing_name` | string | **sim** | Nome do comprador (quem paga). |
+| `billing_email` | string | recomendado | E-mail do comprador. Recebe o aviso de reserva e o bilhete. |
+| `billing_phone` | string | recomendado | Telefone com DDD, só números, até 15 caracteres. |
+| `billing_cpf` | string | um dos dois | CPF do comprador, até 14 caracteres (`000.000.000-00`). Necessário para cobrar. |
+| `billing_cnpj` | string | um dos dois | CNPJ do comprador, até 18 caracteres. |
+| `quantidade_adultos` | inteiro | recomendado | Quantos `AD` há em `passengers`. |
+| `quantidade_criancas` | inteiro | recomendado | Quantos `CH` há em `passengers`. |
+| `quantidade_idosos` | inteiro | recomendado | Quantos `SR` há em `passengers`. |
+| `cupom_codigo` | string | não | Código de cupom de desconto. Valide antes com [`POST /cupons/validar`](#validar-cupom). O desconto é abatido no servidor. |
+| `passengers` | lista | **sim, na prática** | Um item por passageiro. É dela que saem o preço e o bilhete. |
+
+Cada item de `passengers`:
+
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `first_name` | string | sim | Nome. |
+| `last_name` | string | sim | Sobrenome. |
+| `born_date` | data | **sim** | `AAAA-MM-DD`. Usada para validar a faixa etária. |
+| `document_type` | string | sim | `RG`, `CPF`, `CNH` ou `PASS` (passaporte). |
+| `document` | string | sim | Número do documento. |
+| `pax_type` | string | sim | `AD`, `CH` ou `SR`. Precisa bater com a idade. |
+
+Não há campo de preço nem de status no corpo: eles são definidos pela iBarco. Veja [Campos ignorados na criação](#campos-ignorados-na-criação).
+
+```bash
+curl -X POST https://sandbox-api.ibarco.com.br/api/vendas \
+  -H "X-Api-Key: SUA_CHAVE_DE_API" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "viagem": 90311,
+    "billing_name": "Maria da Silva Exemplo",
+    "billing_email": "maria.exemplo@email-exemplo.com.br",
+    "billing_phone": "91999990000",
+    "billing_cpf": "000.000.000-00",
+    "quantidade_adultos": 2,
+    "quantidade_criancas": 1,
+    "quantidade_idosos": 0,
+    "passengers": [
+      {"first_name": "Maria", "last_name": "da Silva Exemplo", "born_date": "1988-04-12", "document_type": "CPF", "document": "000.000.000-00", "pax_type": "AD"},
+      {"first_name": "João", "last_name": "da Silva Exemplo", "born_date": "1986-09-30", "document_type": "RG", "document": "0000000", "pax_type": "AD"},
+      {"first_name": "Lucas", "last_name": "da Silva Exemplo", "born_date": "2017-02-05", "document_type": "RG", "document": "0000001", "pax_type": "CH"}
+    ]
+  }'
+```
+
+Resposta `201`:
+
+```json
+{
+  "id": 120345,
+  "viagem": 90311,
+  "rota": 3,
+  "passengers": [
+    {"ticket_id": 120345, "first_name": "Maria", "last_name": "da Silva Exemplo", "born_date": "1988-04-12", "document_type": "CPF", "document": "000.000.000-00", "pax_type": "AD", "discount": "0.00", "service_tax": "50.00", "base_price": "250.00", "price_with_discount": "250.00", "total": "300.00"},
+    {"ticket_id": 120345, "first_name": "João", "last_name": "da Silva Exemplo", "born_date": "1986-09-30", "document_type": "RG", "document": "0000000", "pax_type": "AD", "discount": "0.00", "service_tax": "50.00", "base_price": "250.00", "price_with_discount": "250.00", "total": "300.00"},
+    {"ticket_id": 120345, "first_name": "Lucas", "last_name": "da Silva Exemplo", "born_date": "2017-02-05", "document_type": "RG", "document": "0000001", "pax_type": "CH", "discount": "125.00", "service_tax": "25.00", "base_price": "250.00", "price_with_discount": "125.00", "total": "150.00"}
+  ],
+  "viagem_trecho": "Belém - Santarém",
+  "porto_saida": {"id": 7, "nome": "Terminal Hidroviário de Belém", "local": "Belém"},
+  "porto_chegada": {"id": 12, "nome": "Cais do Porto de Santarém", "local": "Santarém"},
+  "embarcacao_nome": "Comandante Exemplo",
+  "data_saida": "2026-11-20",
+  "hora_saida": "18:00:00",
+  "data_chegada": "2026-11-23",
+  "hora_chegada": "08:00:00",
+  "tipo_passagem": "Rede",
+  "data_venda": "2026-10-06T10:15:42.381920-03:00",
+  "valor_base": "250.00",
+  "taxa_servico": "20",
+  "valor_final": "750.00",
+  "metodo_pagamento": null,
+  "status_reserva": "CREATED",
+  "payment_intent_id": null,
+  "billing_name": "Maria da Silva Exemplo",
+  "billing_email": "maria.exemplo@email-exemplo.com.br",
+  "billing_phone": "91999990000",
+  "billing_cpf": "000.000.000-00",
+  "billing_cnpj": null,
+  "is_cancelable": true,
+  "total_cancelation_fee": "150.00",
+  "vendido_por": null,
+  "cupom_codigo": null,
+  "desconto_cupom": "0.00",
+  "subtotal": "750.00",
+  "bilhete_url": "https://ibarco.com.br/venda/bilhete/120345/pdf?t=<token do bilhete>",
+  "token_acesso": "<token de acesso da venda>"
+}
+```
+
+Campos da venda:
+
+| Campo | Descrição |
+|---|---|
+| `id` | Id da venda. Use nas chamadas de pagamento, status e cancelamento. |
+| `token_acesso` | Token da venda. Serve para ler a venda completa (`GET /vendas/{id}?t=<token_acesso>`) e é a prova de acesso exigida em [cobrança, cancelamento e status](/pagamento#acesso-à-venda). **Guarde.** Vem na criação e em `POST /venda/consultar`. Vale 30 dias. |
+| `passengers` | Passageiros com o preço de cada um: `base_price` (tarifa cheia), `discount` (desconto em R$), `price_with_discount`, `service_tax` (taxa em R$) e `total`. `ticket_id` é o id da venda. |
+| `valor_base` | Tarifa cheia de um passageiro (`price` da viagem). |
+| `taxa_servico` | Percentual da taxa de serviço aplicado. |
+| `subtotal` | Soma dos passageiros, antes do cupom. |
+| `desconto_cupom` | Desconto do cupom, em R$. |
+| `valor_final` | **Valor a cobrar.** `subtotal − desconto_cupom`. |
+| `status_reserva` | `CREATED` ao nascer (aguardando pagamento). Veja [Status da venda](/conceitos#status-da-venda). |
+| `is_cancelable` | Se a venda ainda pode ser cancelada. |
+| `total_cancelation_fee` | Taxa retida em caso de cancelamento. Veja [Cancelamento](/cancelamento). |
+| `bilhete_url` | Link do cartão de embarque em PDF. Só tem valor de embarque depois do pagamento confirmado. |
+| `viagem_trecho`, `porto_saida`, `porto_chegada`, `embarcacao_nome`, `data_saida`, `hora_saida`, `data_chegada`, `hora_chegada`, `tipo_passagem` | Resumo da viagem, para exibir ao cliente. |
+| `rota`, `vendido_por` | Não são usados na integração. Podem ser ignorados. |
+
+<Note>
+**E-mail ao comprador**
+
+Ao criar a venda, a iBarco envia ao `billing_email` um aviso de reserva aguardando pagamento. Depois do pagamento confirmado, envia o bilhete. Use um e-mail real do comprador.
+</Note>
+
+Erros:
+
+| Status | Quando | Corpo |
+|---|---|---|
+| `400` | Falta `viagem` ou `billing_name`. | `{"error": "Campos obrigatórios ausentes: billing_name"}` |
+| `400` | Viagem inexistente. | `{"error": {"viagem": ["Pk inválido \"999999\" - objeto não existe."]}}` |
+| `400` | Passageiro sem `born_date`. | `{"error": {"detail": ["A data de nascimento é obrigatória para o passageiro Lucas."], "status_code": ["400"]}}` |
+| `400` | `pax_type` não bate com a idade. | `{"error": {"detail": ["Passageiro 'Lucas' de 9 anos foi informado como 'AD' mas deveria ser 'Criança (CH)'."], "status_code": ["400"]}}` |
+| `400` | Viagem fora da janela de venda (trava de antecedência ou já partiu). | `{"error": {"detail": ["As passagens de Suíte para esta viagem precisam ser compradas com 15 dias de antecedência. O prazo para esta saída já encerrou."], "status_code": ["409"]}}` |
+| `401` | Sem credencial. | `{"detail": "As credenciais de autenticação não foram fornecidas."}` |
+| `500` | Cupom recusado na criação, ou falha interna. | `{"error": "Erro inesperado: ..."}` |
+
+<Warning>
+**Janela de venda: confira `error.status_code`**
+
+Na criação da venda, a recusa por janela de venda chega com HTTP `400` e `"status_code": ["409"]` dentro de `error`. Para distinguir "fora da janela" de "dado inválido", leia esse campo. Os endpoints de pagamento respondem `409` no status HTTP. Mudanças nesse formato são anunciadas no [Changelog](/changelog).
+</Warning>
+
+<Warning>
+**Cupom: valide antes de criar a venda**
+
+Se o cupom for recusado durante a criação, a venda **não** é criada e a resposta é `500` com `"Erro inesperado: ..."`. Valide o cupom com [`POST /cupons/validar`](#validar-cupom) e só mande `cupom_codigo` se ele vier `valido: true`.
+</Warning>
+
+### Campos ignorados na criação
+
+<Badge icon="clock" color="orange">Em breve</Badge>
+
+Com a chave de API (e para contas de cliente ou de dono de barco), os campos `status_reserva`, `metodo_pagamento`, `payment_intent_id`, `is_cancelable`, `vendido_por`, `total`, `subtotal` e `desconto_cupom` enviados no corpo são **ignorados, sem erro**.
+
+- A venda sempre nasce com `status_reserva = "CREATED"`, `is_cancelable = true` e sem vendedor.
+- O valor é calculado pela iBarco a partir da viagem e dos passageiros: preço com descontos da viagem e da faixa etária, mais a taxa de serviço.
+- Se `cupom_codigo` for informado, o cupom é validado e o desconto é abatido no servidor.
+- O valor a cobrar é o `valor_final` da resposta (igual a `subtotal − desconto_cupom` quando há cupom).
+- Esses campos continuam aparecendo na resposta. Você só não pode defini-los.
+- O status muda para `CONFIRMED` apenas quando o pagamento é confirmado pelo gateway. A forma de pagamento é registrada nesse momento.
+
+### Passageiros e contadores
+
+<Badge icon="circle-check" color="green">Disponível</Badge>
+
+**O preço e o bilhete saem da lista `passengers`**. Os campos `quantidade_adultos`, `quantidade_criancas` e `quantidade_idosos` são informativos e não entram na conta. Envie os contadores coerentes com a lista.
+
+#### Validação estrita dos contadores
+
+<Badge icon="calendar" color="purple">Planejado</Badge>
+
+A API passará a recusar com `400` a venda em que os contadores não batem com a quantidade de `AD`, `CH` e `SR` em `passengers`.
+
+## Validar cupom
+
+### `POST /cupons/validar`
+
+Também responde em `POST /cupons/validar/`. Confere um cupom e devolve o total com desconto. **Não cria nada**: só serve para mostrar o valor antes da compra. A criação da venda revalida o cupom.
+
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `codigo` | string | sim | Código digitado. |
+| `viagem` | inteiro | recomendado | Id da viagem. Alguns cupons valem só para certos trechos. |
+| `quantidade_adultos`, `quantidade_criancas`, `quantidade_idosos` | inteiro | recomendado | Composição do grupo. A API recalcula o subtotal com elas. |
+| `billing_email`, `billing_cpf` | string | não | Usados por cupons com limite por cliente. |
+
+```bash
+curl -X POST https://sandbox-api.ibarco.com.br/api/cupons/validar \
+  -H "X-Api-Key: SUA_CHAVE_DE_API" \
+  -H "Content-Type: application/json" \
+  -d '{"codigo": "BEMVINDO10", "viagem": 90311, "quantidade_adultos": 2, "quantidade_criancas": 1, "quantidade_idosos": 0}'
+```
+
+Resposta `200`:
+
+```json
+{
+  "valido": true,
+  "codigo": "BEMVINDO10",
+  "descricao": "10% de desconto na primeira viagem",
+  "tipo_desconto": "PERCENTUAL",
+  "valor": 10.0,
+  "subtotal": 750.0,
+  "desconto": 75.0,
+  "total": 675.0
+}
+```
+
+| Campo | Descrição |
+|---|---|
+| `tipo_desconto` | `PERCENTUAL` (valor em %) ou `FIXO` (valor em R$). |
+| `valor` | Valor do cupom no tipo acima. |
+| `subtotal`, `desconto`, `total` | Em R$. `total` é o que a venda vai cobrar com o cupom. |
+
+Erros `400`, sempre com `valido: false`:
+
+| Quando | `detail` |
+|---|---|
+| Sem código | `"Informe o código do cupom."` |
+| Viagem inexistente | `"Viagem não encontrada."` |
+| Sem viagem e sem quantidades | `"Não foi possível calcular o valor da compra."` |
+| Código desconhecido | `"Cupom não encontrado. Confira o código digitado."` |
+| Inativo, fora da validade, fora do trecho, esgotado | `"Este cupom expirou."`, `"Este cupom não vale para o trecho selecionado."`, `"Este cupom atingiu o limite de utilizações."` e similares |
+
+## Consultar a venda
+
+### `GET /vendas/{id}`
+
+Também responde em `GET /vendas/{id}/`.
+
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `t` | string | O `token_acesso` recebido na criação. |
+
+Com o token, devolve a venda completa (mesmos campos da criação, sem `token_acesso`). **Sem o token, devolve só o status**, para não expor dados pessoais dos passageiros:
+
+<Tabs>
+<Tab title="Com token">
+
+```bash
+curl "https://sandbox-api.ibarco.com.br/api/vendas/120345?t=<token de acesso da venda>" \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+```json
+{
+  "id": 120345,
+  "viagem": 90311,
+  "status_reserva": "CONFIRMED",
+  "metodo_pagamento": "Pix",
+  "valor_final": 750.0,
+  "...": "demais campos da venda"
+}
+```
+
+</Tab>
+<Tab title="Sem token">
+
+```bash
+curl https://sandbox-api.ibarco.com.br/api/vendas/120345 \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+```json
+{
+  "status_reserva": "CONFIRMED"
+}
+```
+
+</Tab>
+</Tabs>
+
+Erros: `401` sem credencial; `404` venda inexistente (`{"detail": "Não encontrado."}`).
+
+## Idempotência
+
+<Badge icon="calendar" color="purple">Planejado</Badge>
+
+Uma falha de rede no meio de `POST /vendas` deixa a dúvida: a venda foi criada ou não? Repetir a chamada pode gerar venda duplicada. O header `Idempotency-Key` resolve isso: repetir com a mesma chave devolve a mesma resposta, sem criar nada novo.
+
+<Warning>
+**Valores propostos, sujeitos a confirmação**
+
+Prazos e códigos abaixo podem mudar até a entrega.
+
+- Header `Idempotency-Key`, até **255 caracteres**. Use um UUID v4 por operação.
+- Vale em `POST /vendas`, `POST /venda/payment-link/{id}` e `POST /venda/process-payment/{id}`.
+- Mesma chave e mesmo corpo: a API devolve a resposta original (mesmo status e corpo), sem novo efeito.
+- Mesma chave com corpo diferente: **`422`**.
+- Mesma chave enquanto a primeira requisição ainda está em andamento: **`409`**. Espere e tente de novo.
+- A chave vale por **24 horas**.
+- O escopo é a credencial: chaves iguais de parceiros diferentes não se misturam.
+</Warning>
+
+```bash
+curl -X POST https://sandbox-api.ibarco.com.br/api/vendas \
+  -H "X-Api-Key: SUA_CHAVE_DE_API" \
+  -H "Idempotency-Key: 3f1c9a52-7d4e-4b8a-9c21-5e6f7a8b9c0d" \
+  -H "Content-Type: application/json" \
+  -d '{"viagem": 90311, "billing_name": "Maria da Silva Exemplo", "passengers": [ ... ]}'
+```
+
+Enquanto a idempotência não estiver disponível, o header é ignorado. Se `POST /vendas` falhar sem resposta (timeout, conexão caída), não repita às cegas: fale com o suporte para confirmar se a venda foi criada antes de tentar de novo.

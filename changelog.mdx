@@ -1,0 +1,22 @@
+---
+title: "Changelog"
+description: "Mudanças na API e nesta documentação, da mais recente para a mais antiga."
+---
+
+Mudanças na API e nesta documentação, da mais recente para a mais antiga. Mudanças incompatíveis são avisadas por e-mail com 30 dias de antecedência e registradas aqui (veja a [política de versionamento](/index#política-de-versionamento)).
+
+## 07/10/2026
+
+<Badge icon="clock" color="orange">Em breve</Badge> Entra em produção com o próximo deploy.
+
+- **Campos protegidos na criação da venda:** `status_reserva`, `metodo_pagamento`, `payment_intent_id`, `is_cancelable`, `vendido_por`, `total`, `subtotal` e `desconto_cupom` enviados no corpo passam a ser ignorados, sem erro. A venda sempre nasce `CREATED` e o valor é calculado pela iBarco. Veja [Compra](/compra#campos-ignorados-na-criação).
+- **Token da venda obrigatório:** `POST /venda/cancelamento/{id}`, `POST /venda/payment-link/{id}`, `POST /venda/process-payment/{id}`, `POST /venda/stripe-checkout/{id}` e `GET /venda/check-status/{id}` passam a exigir o token da venda (`?t=`), equipe iBarco ou o comprador autenticado, além da chave de API. Sem prova de acesso, `403`. `GET /venda/check-status/{id}` passa a exigir credencial (`401` sem credencial). Veja [Acesso à venda](/pagamento#acesso-à-venda).
+
+## 06/10/2026
+
+Primeira versão da documentação pública para parceiros.
+
+- Documentados os recursos disponíveis: autenticação por chave de API e Bearer, busca, preço por faixa etária, compra, cupons, pagamento (link Asaas, Pix, cartão, Stripe), consulta de status e cancelamento com taxa fixa.
+- <Badge icon="clock" color="orange">Em breve</Badge> Registrado o limite de requisições. Veja [Erros e limites](/erros#limite-de-requisições).
+- <Badge icon="calendar" color="purple">Planejado</Badge> Registrado o que está planejado, com valores propostos: idempotência, reserva de vaga e expiração, webhooks de saída, cancelamento com estorno automático, regra de idade unificada, validação de quantidades e enum de método de pagamento.
+- Publicada a [coleção Postman](/postman).

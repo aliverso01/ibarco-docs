@@ -1,0 +1,40 @@
+---
+title: "Coleção Postman"
+description: "Coleção Postman com uma requisição pronta para cada endpoint disponível, apontando para o sandbox."
+---
+
+<Badge icon="circle-check" color="green">Disponível</Badge>
+
+A coleção traz uma requisição pronta para cada endpoint **disponível** desta documentação, com corpos de exemplo fictícios.
+
+<Card title="Baixar a coleção" icon="download" href="/postman/ibarco-api.postman_collection.json">
+  `ibarco-api.postman_collection.json`, formato Postman Collection v2.1. Também abre no Insomnia, no Bruno e no Hoppscotch.
+</Card>
+
+## Como usar
+
+1. No Postman, clique em **Import** e escolha o arquivo `ibarco-api.postman_collection.json`.
+2. Abra a coleção, aba **Variables**, e preencha:
+
+| Variável | Valor |
+|---|---|
+| `base_url` | `https://sandbox-api.ibarco.com.br/api` (já vem preenchida) |
+| `api_key` | A sua chave de API. Preencha só em **Current value**, para ela não ser sincronizada nem exportada. |
+| `venda_id` | Id de uma venda criada (preencha depois de "Criar venda"). |
+| `token_acesso` | O `token_acesso` devolvido em "Criar venda". |
+| `viagem_id` | Id de uma viagem encontrada na busca. |
+| `barco_id` | Id de uma embarcação. |
+
+3. Todas as requisições já enviam o header `X-Api-Key: {{api_key}}`.
+
+<Note>
+**Sandbox e produção**
+
+`base_url` vem apontando para o sandbox. Para usar em produção, troque `base_url` pela URL de produção e `api_key` pela chave de produção, informadas junto com as credenciais. Em produção, "Criar venda", os pagamentos e o cancelamento têm efeito real: criam cobranças e enviam e-mails ao comprador.
+</Note>
+
+<Warning>
+**Não compartilhe a chave**
+
+A coleção distribuída não tem nenhuma credencial. Ao exportar ou compartilhar a sua cópia, confira que `api_key` está vazio.
+</Warning>

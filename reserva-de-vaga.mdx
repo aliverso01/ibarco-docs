@@ -1,0 +1,95 @@
+---
+title: "Reserva de vaga e expiração"
+description: "Como a venda se relaciona com as vagas da viagem hoje, e a reserva de vaga com expiração planejada."
+---
+
+<Badge icon="calendar" color="purple">Planejado</Badge>
+
+## Como funciona hoje
+
+<Badge icon="circle-check" color="green">Disponível</Badge>
+
+- Criar a venda **não reserva vaga**. Duas vendas podem disputar a última vaga, e a confirmação depende do barco.
+- A venda em `CREATED` (ou `PENDING`) **não expira** sozinha. A cobrança no gateway vence (3 dias ou na data da saída), mas a venda continua aguardando.
+- `avaliable_seats` é a capacidade cadastrada, não um saldo. Ele não diminui a cada venda.
+
+Na prática: a venda só está garantida depois de `CONFIRMED`. Não prometa vaga ao cliente antes disso.
+
+## O que está planejado
+
+A venda passa a segurar a vaga enquanto o cliente paga, e a liberar a vaga se ele não pagar.
+
+<Warning>
+**Valores propostos, sujeitos a confirmação**
+
+Prazos, códigos e campos abaixo podem mudar até a entrega.
+
+- **Criar a venda desconta as vagas** da viagem.
+  - Rede (sem assento numerado): uma vaga por passageiro.
+  - Acomodação com assento numerado (suíte, camarote, poltrona): uma unidade a cada `pessoas_por_unidade` passageiros.
+- **Sem vaga suficiente:** `POST /vendas` responde `409`.
+- **Retenção:** a vaga fica presa até o vencimento da cobrança. Se nenhuma cobrança for iniciada, o teto é de **24 horas** a partir da criação da venda.
+- **Expiração:** vencido o prazo sem pagamento, a venda vira `EXPIRED`, as vagas voltam para a viagem e o link de pagamento deixa de valer.
+- A venda ganha o campo `reserva_expira_em` (data e hora, ISO 8601, horário de Brasília).
+</Warning>
+
+### Disponibilidade da viagem
+
+#### `GET /viagens/{id}/disponibilidade`
+
+Confere se a viagem comporta o grupo antes de criar a venda.
+
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `adultos` | inteiro | Quantidade de adultos. |
+| `criancas` | inteiro | Quantidade de crianças. |
+| `idosos` | inteiro | Quantidade de idosos. |
+
+```bash
+curl "https://sandbox-api.ibarco.com.br/api/viagens/90311/disponibilidade?adultos=2&criancas=1&idosos=0" \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+Resposta `200` proposta:
+
+<Tabs>
+<Tab title="Comporta">
+
+```json
+{
+  "vagas_disponiveis": 37,
+  "comporta": true,
+  "motivo": null
+}
+```
+
+</Tab>
+<Tab title="Não comporta">
+
+```json
+{
+  "vagas_disponiveis": 2,
+  "comporta": false,
+  "motivo": "Restam 2 vagas nesta viagem e o grupo tem 3 passageiros."
+}
+```
+
+</Tab>
+</Tabs>
+
+### Venda com expiração
+
+```json
+{
+  "id": 120345,
+  "status_reserva": "CREATED",
+  "reserva_expira_em": "2026-10-09T10:15:42-03:00",
+  "...": "demais campos da venda"
+}
+```
+
+### Como se preparar
+
+- Trate `EXPIRED` como um status final, igual a `CANCELED`, mas sem taxa.
+- Trate `409` em `POST /vendas` como "sem vaga" e ofereça outra saída ou acomodação.
+- Mostre ao cliente o prazo de `reserva_expira_em`.

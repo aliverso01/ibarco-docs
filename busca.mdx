@@ -1,0 +1,602 @@
+---
+title: "Busca"
+description: "Destinos, portos, locais, embarcações, acomodações, datas e viagens: os endpoints de leitura para montar a vitrine e a busca."
+---
+
+<Badge icon="circle-check" color="green">Disponível</Badge>
+
+Endpoints de leitura para montar a vitrine e a busca de passagens. Todos aceitam chave de API (`X-Api-Key`) ou Bearer. Nenhum altera dados.
+
+Fluxo típico:
+
+1. Monte as opções de origem e destino com [`GET /locais/`](#locais-para-autocompletar) ou [`GET /destinos/`](#destinos).
+2. Busque as saídas com [`GET /viagens/`](#buscar-viagens), informando a composição do grupo (`adultos`, `criancas`, `idosos`).
+3. Abra o detalhe com [`GET /viagens/{id}/`](#detalhe-da-viagem) para confirmar preço e disponibilidade antes de vender.
+
+## Paginação
+
+Listas paginadas devolvem 100 itens por página:
+
+```json
+{
+  "count": 245,
+  "next": "https://sandbox-api.ibarco.com.br/api/portos/?page=2",
+  "previous": null,
+  "results": [ ... ]
+}
+```
+
+| Parâmetro | Descrição |
+|---|---|
+| `page` | Número da página, a partir de 1. |
+| `page_size` | Itens por página. Máximo 1000. |
+
+Siga o campo `next` até ele vir `null`. Cada endpoint abaixo diz se é paginado.
+
+<Tip>
+**Cache**
+
+As respostas de busca ficam em cache por alguns minutos. Isso não afeta o preço cobrado: a compra sempre recalcula na hora. Antes de vender, confira o detalhe da viagem.
+</Tip>
+
+## Destinos
+
+### `GET /destinos/`
+
+Lista as cidades atendidas. **Não é paginado**: devolve um array.
+
+```bash
+curl https://sandbox-api.ibarco.com.br/api/destinos/ \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+Resposta `200`:
+
+```json
+[
+  {"id": 1, "nome": "Belém", "foto": "https://sandbox-api.ibarco.com.br/media/core/media/destinos/belem.jpg"},
+  {"id": 2, "nome": "Santarém", "foto": "https://sandbox-api.ibarco.com.br/media/core/media/destinos/santarem.jpg"},
+  {"id": 3, "nome": "Manaus", "foto": null}
+]
+```
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id` | inteiro | Id da cidade. Use nos filtros `origem` e `destino` de `/viagens/`. |
+| `nome` | string | Nome da cidade. |
+| `foto` | string ou `null` | URL da foto. |
+
+Erros: `401` sem credencial.
+
+## Portos
+
+### `GET /portos/`
+
+Lista os portos (cais e terminais). **Paginado.**
+
+```bash
+curl "https://sandbox-api.ibarco.com.br/api/portos/?page_size=200" \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+Resposta `200`:
+
+```json
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "porto_id": 7,
+      "porto": "Terminal Hidroviário de Belém",
+      "cidade_id": "1",
+      "cidade": "Belém",
+      "rua": "Av. Marechal Hermes",
+      "numero": "s/n",
+      "complemento": null,
+      "bairro": "Reduto",
+      "estado": "PA",
+      "cep": "66000-000",
+      "latitude": "-1.4500",
+      "longitude": "-48.5000"
+    },
+    {
+      "porto_id": 12,
+      "porto": "Cais do Porto de Santarém",
+      "cidade_id": "2",
+      "cidade": "Santarém",
+      "rua": "Av. Tapajós",
+      "numero": "100",
+      "complemento": null,
+      "bairro": "Centro",
+      "estado": "PA",
+      "cep": "68000-000",
+      "latitude": "-2.4300",
+      "longitude": "-54.7100"
+    }
+  ]
+}
+```
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `porto_id` | inteiro | Id do porto. Use em `porto_origem` e `porto_destino` de `/viagens/`. |
+| `porto` | string | Nome do porto. |
+| `cidade_id` | string | Id da cidade (Destino) onde fica o porto. Chega como texto. |
+| `cidade` | string | Nome da cidade. |
+| `rua`, `numero`, `complemento`, `bairro`, `estado`, `cep` | string ou `null` | Endereço. |
+| `latitude`, `longitude` | string ou `null` | Coordenadas. |
+
+`GET /portos/{porto_id}/` devolve um porto.
+
+## Locais para autocompletar
+
+### `GET /locais/`
+
+Cidades **e** portos numa lista só, pronta para um campo de autocompletar. Cada item já diz qual parâmetro enviar em `/viagens/`. Só entram locais com viagem publicada e ainda à venda. Não é paginado.
+
+| Parâmetro | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `busca` | string | não | Texto digitado. Ignora acentos e maiúsculas (`macapa` acha `Macapá`). |
+| `lado` | `origem` ou `destino` | não | Só locais que existem naquele lado de alguma viagem. Omitido, considera os dois. |
+| `limite` | inteiro | não | Máximo de itens. Padrão 20, teto 50. |
+
+```bash
+curl "https://sandbox-api.ibarco.com.br/api/locais/?busca=santar&lado=destino" \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+Resposta `200`:
+
+```json
+{
+  "total": 2,
+  "locais": [
+    {
+      "tipo": "cidade",
+      "id": 2,
+      "rotulo": "Santarém",
+      "sublinha": "1 porto(s)",
+      "cidade_id": 2,
+      "cidade": "Santarém",
+      "param_origem": {"origem": 2},
+      "param_destino": {"destino": 2}
+    },
+    {
+      "tipo": "porto",
+      "id": 12,
+      "rotulo": "Cais do Porto de Santarém",
+      "sublinha": "Santarém",
+      "cidade_id": 2,
+      "cidade": "Santarém",
+      "param_origem": {"porto_origem": 12},
+      "param_destino": {"porto_destino": 12}
+    }
+  ]
+}
+```
+
+Use `param_origem` ou `param_destino` como estão: cidade vira `origem`/`destino`; porto vira `porto_origem`/`porto_destino`.
+
+## Embarcações
+
+### `GET /barcos/`
+
+Lista as embarcações. **Paginado.** `GET /barcos/{id}/` devolve uma.
+
+```bash
+curl https://sandbox-api.ibarco.com.br/api/barcos/31/ \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+Resposta `200`:
+
+```json
+{
+  "id": 31,
+  "comodidades": ["Banheiro", "Lanchonete", "Wi-Fi"],
+  "politica_preco": [
+    {"id": 12, "years": 12, "pax_type": "CH", "discount": "50.00", "service_tax": 0.0, "base_price": 0.0, "price_with_discount": 0.0, "total": 0.0},
+    {"id": 13, "years": 60, "pax_type": "SR", "discount": "20.00", "service_tax": 0.0, "base_price": 0.0, "price_with_discount": 0.0, "total": 0.0}
+  ],
+  "galeria": {
+    "id": 8,
+    "imagens": [
+      {"id": 55, "imagem": "https://sandbox-api.ibarco.com.br/media/core/media/barcos/conves.jpg", "descricao": "Convés superior", "galeria": {"id": 8, "barco": 31}}
+    ]
+  },
+  "fornecedor_nome": "Navegação Exemplo Ltda",
+  "foto_capa": "https://sandbox-api.ibarco.com.br/media/core/media/barcos/comandante-exemplo.jpg",
+  "nome_embarcacao": "Comandante Exemplo",
+  "capacidade": 450,
+  "descricao": "Embarcação de dois andares com redário e suítes climatizadas.",
+  "criado_em": "2025-03-10T14:22:05.120000-03:00",
+  "aprovacao": true,
+  "responsavel": null,
+  "fornecedor": 4,
+  "user": 17
+}
+```
+
+| Campo | Descrição |
+|---|---|
+| `nome_embarcacao` | Nome do barco. |
+| `capacidade` | Lotação cadastrada. |
+| `comodidades` | Lista de textos. |
+| `politica_preco` | Faixas etárias cadastradas (`years`, `pax_type`, `discount`). Os campos de valor aqui saem zerados porque não há viagem no contexto; para preço, use `faixas_etarias` da viagem. |
+| `galeria` | Fotos do barco. |
+| `foto_capa` | URL da foto principal. |
+| `fornecedor_nome` | Empresa responsável pela embarcação. |
+
+Os campos `user`, `responsavel`, `aprovacao` e `criado_em` não são usados na integração e podem ser ignorados.
+
+### Rotas da embarcação
+
+#### `GET /barcos/rotas/{barco_id}/`
+
+Pares origem → destino que a embarcação faz. Não é paginado.
+
+```bash
+curl https://sandbox-api.ibarco.com.br/api/barcos/rotas/31/ \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+Resposta `200`:
+
+```json
+[
+  {"origem": "Belém", "destino": "Santarém"},
+  {"origem": "Santarém", "destino": "Manaus"},
+  {"origem": "Belém", "destino": "Manaus"}
+]
+```
+
+A ordem dos itens não é garantida. Erro `404` com `{"error": "Barco não encontrado"}`.
+
+### Faixas etárias da embarcação
+
+#### `GET /politica-faixa-etaria/`
+
+Faixas etárias cadastradas. **Paginado.** Os campos de valor saem zerados (sem viagem no contexto); para preço, use a viagem.
+
+| Parâmetro | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `barco` | inteiro | não | Só as faixas desta embarcação. |
+
+```bash
+curl "https://sandbox-api.ibarco.com.br/api/politica-faixa-etaria/?barco=31" \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+```json
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {"id": 12, "years": 12, "pax_type": "CH", "discount": "50.00", "service_tax": 0.0, "base_price": 0.0, "price_with_discount": 0.0, "total": 0.0},
+    {"id": 13, "years": 60, "pax_type": "SR", "discount": "20.00", "service_tax": 0.0, "base_price": 0.0, "price_with_discount": 0.0, "total": 0.0}
+  ]
+}
+```
+
+Veja o significado de `years` em [Faixas etárias](/conceitos#faixas-etárias).
+
+## Acomodações
+
+### `GET /tipo-passagem/`
+
+Tipos de acomodação cadastrados. **Paginado.**
+
+```json
+{
+  "count": 3,
+  "next": null,
+  "previous": null,
+  "results": [
+    {"id": 1, "tipo": "Rede", "quota": null, "usa_assento": false, "unidade_assento": "", "pessoas_por_unidade": 1, "antecedencia_minima_dias": 0, "antecedencia_minima_horas": 3, "user": null},
+    {"id": 2, "tipo": "Suíte", "quota": null, "usa_assento": true, "unidade_assento": "suíte", "pessoas_por_unidade": 2, "antecedencia_minima_dias": 15, "antecedencia_minima_horas": 0, "user": null},
+    {"id": 3, "tipo": "Poltrona", "quota": null, "usa_assento": true, "unidade_assento": "poltrona", "pessoas_por_unidade": 1, "antecedencia_minima_dias": 15, "antecedencia_minima_horas": 0, "user": null}
+  ]
+}
+```
+
+| Campo | Descrição |
+|---|---|
+| `tipo` | Nome da acomodação. |
+| `usa_assento` | `true` para acomodação numerada (suíte, camarote, poltrona); `false` para rede (controle por lotação). |
+| `unidade_assento` | Como a unidade aparece no bilhete. |
+| `pessoas_por_unidade` | Quantas pessoas cabem numa unidade. |
+| `antecedencia_minima_dias`, `antecedencia_minima_horas` | Trava de antecedência da compra. Veja [Conceitos](/conceitos#trava-de-antecedência). |
+
+### Acomodações de uma saída
+
+#### `GET /viagem/acomodacoes/`
+
+Lista as viagens (uma por acomodação) de um barco numa data e trecho. **Paginado.** Exige pelo menos um filtro; sem filtro, a lista vem vazia. Só traz viagens dentro da trava de antecedência.
+
+| Parâmetro | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `embarcacao` | inteiro | ao menos um | Id do barco. |
+| `data_saida` | data | ao menos um | `AAAA-MM-DD`. |
+| `trecho` | inteiro | ao menos um | Id do trecho. |
+| `tipo_passagem` | inteiro | ao menos um | Id da acomodação. |
+
+```bash
+curl "https://sandbox-api.ibarco.com.br/api/viagem/acomodacoes/?embarcacao=31&data_saida=2026-11-20&trecho=5" \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+```json
+{
+  "count": 3,
+  "next": null,
+  "previous": null,
+  "results": [
+    {"id": 90311, "data_saida": "2026-11-20", "tipo_passagem": 1, "trecho": 5, "price": "250.00"},
+    {"id": 90312, "data_saida": "2026-11-20", "tipo_passagem": 3, "trecho": 5, "price": "320.00"},
+    {"id": 90313, "data_saida": "2026-11-20", "tipo_passagem": 2, "trecho": 5, "price": "1100.00"}
+  ]
+}
+```
+
+`id` é o id da viagem que você envia na compra. `price` é a tarifa cheia, sem taxa: para o preço final, abra o detalhe da viagem.
+
+## Datas com saída
+
+### `GET /datas-disponiveis/`
+
+Datas de saída ainda vendáveis, com o trecho de cada uma. **Paginado.** Útil para montar um calendário por embarcação.
+
+| Parâmetro | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `barco_id` | inteiro | não | Só as saídas desta embarcação. |
+
+```bash
+curl "https://sandbox-api.ibarco.com.br/api/datas-disponiveis/?barco_id=31" \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+```json
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "trecho": {
+        "id": 5,
+        "origem": 1,
+        "porto_origem": 7,
+        "destino": 2,
+        "porto_destino": 12,
+        "destino_foto": "https://sandbox-api.ibarco.com.br/media/core/media/destinos/santarem.jpg",
+        "origem_nome": "Belém",
+        "porto_nome_origem": "Terminal Hidroviário de Belém",
+        "porto_nome_destino": "Cais do Porto de Santarém",
+        "destino_nome": "Santarém",
+        "valor_apartir": "250.00"
+      },
+      "data_saida": "2026-11-20"
+    }
+  ]
+}
+```
+
+A lista traz uma linha por viagem, então a mesma data pode aparecer mais de uma vez (uma por acomodação). Confirme a saída em `/viagens/` antes de vender.
+
+## Buscar viagens
+
+### `GET /viagens/`
+
+Busca as saídas à venda. **Paginado.** Só devolve viagens publicadas e dentro da trava de antecedência, ordenadas por data de saída.
+
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `origem` | inteiro | Id da cidade de origem (Destino). |
+| `destino` | inteiro | Id da cidade de destino (Destino). |
+| `porto_origem` | inteiro | Id do porto de saída. |
+| `porto_destino` | inteiro | Id do porto de chegada. |
+| `porto` | inteiro | Id de um porto, de saída ou de chegada. |
+| `data_saida` | data | Saídas exatamente nesta data (`AAAA-MM-DD`). |
+| `data_inicial`, `data_final` | data | Intervalo de datas de saída. Pode usar só um dos dois. |
+| `embarcacao` | lista de inteiros | Ids de barcos separados por vírgula: `31,40`. |
+| `fornecedor` | inteiro | Id da empresa responsável pelas embarcações. |
+| `tipo_passagem` | inteiro | Id da acomodação. |
+| `price_min`, `price_max` | decimal | Faixa de tarifa cheia (`price`). |
+| `adultos`, `criancas`, `idosos` | inteiro | Composição do grupo. Ativa o bloco `resumo_pax` e remove saídas que não comportam o grupo. Total máximo de 20 passageiros. |
+| `page`, `page_size` | inteiro | Paginação. |
+
+Todos os filtros são opcionais e se combinam. Sem passageiros informados, os preços são de um adulto e `resumo_pax` vem `null`.
+
+```bash
+curl "https://sandbox-api.ibarco.com.br/api/viagens/?origem=1&destino=2&data_saida=2026-11-20&adultos=2&criancas=1&idosos=0" \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+Resposta `200`. Atenção ao formato: os itens ficam em `results.data`.
+
+```json
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": {
+    "success": true,
+    "message": "Dados recuperados com sucesso",
+    "data": [
+      {
+        "rota": 3,
+        "trecho": {
+          "id": 5,
+          "origem": 1,
+          "porto_origem": 7,
+          "destino": 2,
+          "porto_destino": 12,
+          "destino_foto": "https://sandbox-api.ibarco.com.br/media/core/media/destinos/santarem.jpg",
+          "origem_nome": "Belém",
+          "porto_nome_origem": "Terminal Hidroviário de Belém",
+          "porto_nome_destino": "Cais do Porto de Santarém",
+          "destino_nome": "Santarém",
+          "valor_apartir": "250.00"
+        },
+        "id": 90311,
+        "data_saida": "2026-11-20",
+        "data_chegada": "2026-11-23",
+        "horario_saida": "18:00:00",
+        "horario_chegada": "08:00:00",
+        "duracao_dia": 2,
+        "duracao_horas": 14,
+        "tipo_passagem": {
+          "id": 1,
+          "tipo": "Rede",
+          "quota": null,
+          "usa_assento": false,
+          "unidade_assento": "",
+          "pessoas_por_unidade": 1,
+          "antecedencia_minima_dias": 0,
+          "antecedencia_minima_horas": 3,
+          "user": null
+        },
+        "preco_por_idade": [
+          {"id": 12, "years": 12, "pax_type": "CH", "discount": "50.00", "service_tax": 25.0, "base_price": 250.0, "price_with_discount": 125.0, "total": 150.0},
+          {"id": 13, "years": 60, "pax_type": "SR", "discount": "20.00", "service_tax": 40.0, "base_price": 250.0, "price_with_discount": 200.0, "total": 240.0}
+        ],
+        "faixas_etarias": [
+          {"pax_type": "CH", "rotulo": "Criança", "idade_min": 0, "idade_max": 11, "desconto": 50.0, "preco": 150.0, "cadastrada": true, "politica_id": 12},
+          {"pax_type": "AD", "rotulo": "Adulto", "idade_min": 12, "idade_max": 59, "desconto": 0.0, "preco": 300.0, "cadastrada": false, "politica_id": null},
+          {"pax_type": "SR", "rotulo": "Idoso", "idade_min": 60, "idade_max": null, "desconto": 20.0, "preco": 240.0, "cadastrada": true, "politica_id": 13}
+        ],
+        "foto_capa": "https://sandbox-api.ibarco.com.br/media/core/media/barcos/comandante-exemplo.jpg",
+        "galeria": [
+          {
+            "imagem": "/media/core/media/barcos/conves.jpg",
+            "descricao": "Convés superior",
+            "imagem_url": "https://sandbox-api.ibarco.com.br/media/core/media/barcos/conves.jpg"
+          }
+        ],
+        "embarcacao": {
+          "id": 31,
+          "nome_embarcacao": "Comandante Exemplo",
+          "fornecedor": 4,
+          "fornecedor_nome": "Navegação Exemplo Ltda"
+        },
+        "preco": "250.00",
+        "desconto": "0.00",
+        "taxa_servico": "50.00",
+        "preco_final": "300.00",
+        "preco_original_final": "300.00",
+        "resumo_pax": {
+          "adultos": 2,
+          "criancas": 1,
+          "idosos": 0,
+          "total_passageiros": 3,
+          "precos_unitarios": {"AD": "300.00", "CH": "150.00", "SR": "240.00"},
+          "subtotais": {"AD": "600.00", "CH": "150.00", "SR": "0.00"},
+          "preco_total": "750.00",
+          "preco_total_original": "900.00",
+          "economia": "150.00"
+        },
+        "user": 17,
+        "price": "250.00",
+        "online": true,
+        "aprovacao": true,
+        "disponivel_para_venda": true,
+        "motivo_indisponivel": null,
+        "avaliable_seats": 120,
+        "porto_saida_nome": "Terminal Hidroviário de Belém",
+        "porto_chegada_nome": "Cais do Porto de Santarém"
+      }
+    ]
+  }
+}
+```
+
+Campos da viagem:
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id` | inteiro | Id da viagem. **É o que vai na compra.** |
+| `trecho` | objeto | Origem e destino. Os campos `porto_*` do trecho refletem a primeira viagem cadastrada no trecho; para os portos desta viagem, use `porto_saida_nome` e `porto_chegada_nome`. |
+| `data_saida`, `horario_saida` | data, hora | Partida, horário de Brasília. `horario_saida` pode ser `null`. |
+| `data_chegada`, `horario_chegada` | data, hora | Chegada prevista. Podem ser `null`. |
+| `duracao_dia`, `duracao_horas` | inteiro | Duração prevista. |
+| `tipo_passagem` | objeto | Acomodação desta viagem. |
+| `embarcacao` | objeto | `id`, `nome_embarcacao`, `fornecedor`, `fornecedor_nome`. |
+| `foto_capa`, `galeria` | URL, lista | Fotos do barco. |
+| `price`, `preco`, `desconto`, `taxa_servico`, `preco_final`, `preco_original_final` | decimal | Veja [Campos de preço](/conceitos#campos-de-preço-na-viagem). |
+| `faixas_etarias` | lista | Preço e idade de cada faixa. Use esta lista, não `preco_por_idade`. |
+| `preco_por_idade` | lista | Cadastro bruto das faixas da embarcação. Para preço e idade, prefira `faixas_etarias`. |
+| `resumo_pax` | objeto ou `null` | Total do grupo pedido. `preco_total` é o valor que a compra vai cobrar (sem cupom). |
+| `disponivel_para_venda`, `motivo_indisponivel` | booleano, string | Se a viagem ainda pode ser vendida e, se não, por quê. |
+| `avaliable_seats` | inteiro ou `null` | Capacidade cadastrada. Não é saldo. Veja [Vagas](/conceitos#vagas). |
+| `porto_saida_nome`, `porto_chegada_nome` | string ou `null` | Portos desta viagem. |
+| `rota` | inteiro ou string | Id da linha do barco. Vem como texto quando não há linha cadastrada. Pode ser ignorado. |
+| `online`, `aprovacao`, `user` | | Não são usados na integração. Podem ser ignorados. |
+
+Erros:
+
+| Status | Quando | Corpo |
+|---|---|---|
+| `401` | Sem credencial. | `{"detail": "As credenciais de autenticação não foram fornecidas."}` |
+| `404` | Nenhuma viagem encontrada para os filtros. | `{"success": false, "message": "Nenhuma viagem encontrada.", "data": []}` |
+| `500` | Falha interna. | `{"success": false, "message": "Ocorreu um erro ao processar sua requisição", "error": "..."}` |
+
+<Warning>
+**Busca sem resultado responde 404**
+
+Uma busca válida sem saídas responde `404`, não `200` com lista vazia. Trate esse `404` como "nenhum resultado".
+</Warning>
+
+## Detalhe da viagem
+
+### `GET /viagens/{id}/`
+
+Uma viagem publicada, com os mesmos campos da busca. **Não é embrulhado** em `success`/`data`: o objeto vem direto.
+
+Diferente da busca, o detalhe também devolve viagens fora da trava de antecedência. Por isso, confira `disponivel_para_venda` antes de vender.
+
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `adultos`, `criancas`, `idosos` | inteiro | Opcional. Preenche `resumo_pax` com o total do grupo. |
+
+```bash
+curl "https://sandbox-api.ibarco.com.br/api/viagens/90311/?adultos=2&criancas=1&idosos=0" \
+  -H "X-Api-Key: SUA_CHAVE_DE_API"
+```
+
+Resposta `200` (resumida):
+
+```json
+{
+  "id": 90311,
+  "data_saida": "2026-11-20",
+  "horario_saida": "18:00:00",
+  "tipo_passagem": {"id": 1, "tipo": "Rede", "usa_assento": false, "pessoas_por_unidade": 1, "antecedencia_minima_dias": 0, "antecedencia_minima_horas": 3},
+  "embarcacao": {"id": 31, "nome_embarcacao": "Comandante Exemplo", "fornecedor": 4, "fornecedor_nome": "Navegação Exemplo Ltda"},
+  "preco_final": "300.00",
+  "faixas_etarias": [
+    {"pax_type": "CH", "rotulo": "Criança", "idade_min": 0, "idade_max": 11, "desconto": 50.0, "preco": 150.0, "cadastrada": true, "politica_id": 12},
+    {"pax_type": "AD", "rotulo": "Adulto", "idade_min": 12, "idade_max": 59, "desconto": 0.0, "preco": 300.0, "cadastrada": false, "politica_id": null},
+    {"pax_type": "SR", "rotulo": "Idoso", "idade_min": 60, "idade_max": null, "desconto": 20.0, "preco": 240.0, "cadastrada": true, "politica_id": 13}
+  ],
+  "resumo_pax": {
+    "adultos": 2, "criancas": 1, "idosos": 0, "total_passageiros": 3,
+    "precos_unitarios": {"AD": "300.00", "CH": "150.00", "SR": "240.00"},
+    "subtotais": {"AD": "600.00", "CH": "150.00", "SR": "0.00"},
+    "preco_total": "750.00", "preco_total_original": "900.00", "economia": "150.00"
+  },
+  "disponivel_para_venda": true,
+  "motivo_indisponivel": null,
+  "porto_saida_nome": "Terminal Hidroviário de Belém",
+  "porto_chegada_nome": "Cais do Porto de Santarém"
+}
+```
+
+Erros:
+
+| Status | Quando | Corpo |
+|---|---|---|
+| `401` | Sem credencial. | `{"detail": "As credenciais de autenticação não foram fornecidas."}` |
+| `404` | Viagem inexistente ou não publicada. | `{"success": false, "message": "Viagem não encontrada", "error": "..."}` |

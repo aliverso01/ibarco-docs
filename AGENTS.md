@@ -1,33 +1,50 @@
-> **First-time setup**: Customize this file for your project. Prompt the user to customize this file for their project.
-> For Mintlify product knowledge (components, configuration, writing standards),
-> install the Mintlify skill: `npx skills add https://mintlify.com/docs`
+# Instruções para quem edita esta documentação
 
-# Documentation project instructions
+Vale para pessoas e para agentes de IA. Leia antes de alterar qualquer página.
 
-## About this project
+## Sobre o projeto
 
-- This is a documentation site built on [Mintlify](https://mintlify.com)
-- Pages are MDX files with YAML frontmatter
-- Configuration lives in `docs.json`
-- Use the Mintlify MCP server, `https://mcp.mintlify.com`, to edit content and settings via MCP
-- Use the Mintlify docs MCP server, `https://www.mintlify.com/docs/mcp`, to query information about using Mintlify via MCP
+- Site de documentação [Mintlify](https://mintlify.com). Páginas em MDX com frontmatter YAML (`title` e `description` obrigatórios); configuração e navegação em `docs.json`.
+- Toda página nova precisa entrar em `navigation.groups` do `docs.json`.
+- Antes de concluir qualquer mudança, rode `npx -y mint validate` e `npx -y mint broken-links --check-anchors`. Os dois precisam passar sem erro.
+- Use só componentes que existem no Mintlify (`Note`, `Tip`, `Warning`, `Danger`, `Info`, `Check`, `Tabs`/`Tab`, `Steps`/`Step`, `Card`, `Columns`, `Badge`, blocos ```mermaid). Os callouts não aceitam `title`: use uma primeira linha em negrito.
+- Em MDX, chaves `{}` e `<` fora de código são interpretados como JSX. Caminhos como `/vendas/{id}` e marcadores como `<token_acesso>` vão sempre entre crases ou em bloco de código.
+- Links internos são absolutos, sem extensão: `/pagamento#acesso-à-venda`. A âncora é o título em minúsculas, com acentos preservados e espaços trocados por hífens. Para ter uma âncora estável, prefira um título em texto puro e ponha o endpoint num subtítulo abaixo. Confirme com `mint broken-links --check-anchors`.
 
-## Terminology
+## Público e tom
 
-{/* Add product-specific terms and preferred usage */}
-{/* Example: Use "workspace" not "project", "member" not "user" */}
+- O leitor é o **parceiro que vai integrar** com a API: desenvolvedor de agência, operadora ou integrador. Escreva em pt-BR, na segunda pessoa ("você"), em frases curtas.
+- Tom neutro e prático: descreva o que a API faz e o que o parceiro deve fazer ("a API responde `404` quando a busca não encontra saídas; trate como nenhum resultado"). Nunca escreva como desculpa, justificativa ou histórico.
 
-## Style preferences
+## Limites de conteúdo
 
-{/* Add any project-specific style rules below */}
+O que **nunca** entra nas páginas:
 
-- Use active voice and second person ("you")
-- Keep sentences concise — one idea per sentence
-- Use sentence case for headings
-- Bold for UI elements: Click **Settings**
-- Code formatting for file names, commands, paths, and code references
+- Números de card do Jira (`IT-xx` ou "o card..."), nomes de branch, sprints ou qualquer referência ao processo interno.
+- Ferramentas internas e de bastidor: ferramenta de documentação usada antes, documentações antigas, painéis internos, infraestrutura, nomes de serviços internos.
+- Histórico de correções ("corrigido em relação a...", "antes funcionava assim", "valor legado", "mantido por compatibilidade", "ainda não é padronizado", "até a iBarco anunciar...").
+- O que a API **não** faz quando isso não ajuda a integrar: endpoints internos ("não chame este caminho"), métodos não oferecidos ao parceiro, modelos comerciais em avaliação.
+- Comparações entre a regra atual e uma regra futura que não mudam a ação do parceiro. Mantenha só a orientação prática.
+- Credencial real de qualquer tipo. Exemplos usam `SUA_CHAVE_DE_API`, `<token_acesso>` e dados fictícios.
 
-## Content boundaries
+O que **sempre** fica, em tom neutro: formatos de erro por endpoint, comportamentos que o parceiro precisa tratar (busca vazia com `404`, janela de venda com HTTP `400` e `status_code: ["409"]`, valores monetários como texto ou número, cupom recusado na criação com `500`, a grafia `avaliable_seats`, `PENDING` equivalente a `CREATED`), limite de requisições, segurança da chave e LGPD.
 
-{/* Define what should and shouldn't be documented */}
-{/* Example: Don't document internal admin features */}
+## Selos de status
+
+Três valores, sem número de card, sempre com este markup:
+
+```mdx
+<Badge icon="circle-check" color="green">Disponível</Badge>
+<Badge icon="clock" color="orange">Em breve</Badge>
+<Badge icon="calendar" color="purple">Planejado</Badge>
+```
+
+- **Disponível:** em produção.
+- **Em breve:** comportamento que entra no próximo deploy.
+- **Planejado:** desenho proposto. Toda seção Planejado traz os valores propostos num `<Warning>` que começa com **Valores propostos, sujeitos a confirmação**.
+
+Ao mudar um status, atualize também a tabela "Estado da API" em `index.mdx`, a `referencia.mdx` e o `changelog.mdx`.
+
+## URL base
+
+Todos os exemplos (texto, `curl`, JSON, URLs de mídia, coleção Postman) usam o sandbox: `https://sandbox-api.ibarco.com.br/api`. A URL de produção não aparece na documentação: ela é informada junto com as credenciais de produção. Links para o site (`https://ibarco.com.br/...`) ficam como estão.
