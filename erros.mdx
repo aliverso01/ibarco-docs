@@ -1,0 +1,130 @@
+---
+title: "Erros e limites"
+description: "Formatos do corpo de erro, códigos HTTP, limite de requisições e regras de segurança."
+---
+
+<Badge icon="circle-check" color="green">Disponível</Badge>
+
+## Formato do erro
+
+O formato do corpo de erro varia conforme o endpoint. Ele chega em um destes formatos:
+
+<Tabs>
+<Tab title="detail">
+
+Usado pela maioria dos endpoints.
+
+```json
+{"detail": "As credenciais de autenticação não foram fornecidas."}
+```
+
+</Tab>
+<Tab title="error">
+
+Usado em compra, pagamento e consultas de venda. O valor pode ser texto ou objeto.
+
+```json
+{"error": "Venda não encontrada."}
+```
+
+```json
+{"error": {"detail": ["Passageiro 'Lucas' de 9 anos foi informado como 'AD' mas deveria ser 'Criança (CH)'."], "status_code": ["400"]}}
+```
+
+</Tab>
+<Tab title="detail + error">
+
+Bloqueio por janela de venda nos endpoints de pagamento. Os dois campos trazem o mesmo texto.
+
+```json
+{"detail": "Esta viagem já partiu e não está mais disponível para compra.", "error": "Esta viagem já partiu e não está mais disponível para compra."}
+```
+
+</Tab>
+<Tab title="status + message">
+
+Cancelamento e busca de viagens.
+
+```json
+{"status": "error", "message": "Essa reserva já estava cancelada."}
+```
+
+```json
+{"success": false, "message": "Nenhuma viagem encontrada.", "data": []}
+```
+
+</Tab>
+</Tabs>
+
+**Recomendação:** decida pelo **status HTTP**. Para a mensagem, leia `detail`; se não houver, `error` (texto ou objeto); se não houver, `message`. Mostre a mensagem ao usuário só quando fizer sentido: elas são escritas para o comprador, em português.
+
+```python
+def mensagem_de_erro(corpo: dict) -> str:
+    for campo in ("detail", "error", "message"):
+        valor = corpo.get(campo)
+        if isinstance(valor, str):
+            return valor
+        if isinstance(valor, dict):
+            interno = valor.get("detail")
+            if isinstance(interno, list) and interno:
+                return str(interno[0])
+            return str(valor)
+    return "Erro sem descrição."
+```
+
+## Códigos HTTP
+
+| Status | Significado | O que fazer |
+|---|---|---|
+| `400` | Dado inválido: campo faltando, `pax_type` incoerente com a idade, cupom inválido. Na criação de venda, também a janela de venda (veja [Compra](/compra#criar-venda)). | Corrija o corpo. Não repita igual. |
+| `401` | Sem credencial, ou credencial inválida ou vencida. | Envie `X-Api-Key` ou renove o Bearer. |
+| `403` | Credencial válida, mas sem permissão para a operação, ou chamada de cobrança, cancelamento ou status sem a prova de acesso à venda (`{"detail": "Sem acesso a esta venda. Envie o token da venda (?t=) ou autentique-se."}`). | Se faltou o token, reenvie com `?t=<token_acesso>` (veja [Acesso à venda](/pagamento#acesso-à-venda)). Nos demais casos, não repita: a operação não é permitida ao parceiro. |
+| `404` | Recurso inexistente. Em `GET /viagens/`, também "nenhum resultado". | Confira o id ou os filtros. |
+| `409` | Conflito: viagem fora da janela de venda (pagamento); requisição idempotente ainda em andamento (planejado); sem vaga (planejado). | Leia a mensagem. Para idempotência, espere e repita. |
+| `422` | Mesma `Idempotency-Key` com corpo diferente (planejado). | Gere uma chave nova para a operação nova. |
+| `429` | Limite de requisições estourado. | Espere o tempo de `Retry-After` e repita. |
+| `500` | Falha interna. | Repita com espera crescente. Persistindo, avise o suporte. |
+| `502`, `503`, `504` | Indisponibilidade temporária. | Repita com espera crescente. |
+
+Erros do gateway de pagamento (CPF recusado, cartão negado) chegam com o status devolvido pelo gateway, em geral `400`, e o detalhe em `details`. Veja [Pagamento](/pagamento).
+
+## Limite de requisições
+
+<Badge icon="clock" color="orange">Em breve</Badge>
+
+O limite protege a API para todos os parceiros. Ele é contado assim:
+
+| Credencial | Contagem | Limite |
+|---|---|---|
+| Só chave de API (`X-Api-Key`) | Por **IP de origem** | **600 requisições por minuto** |
+| Usuário autenticado (`Authorization: Bearer`) | Por **usuário** | **2000 requisições por hora** |
+
+Com chave de API, todas as chamadas que saem do mesmo IP somam no mesmo contador. Se vários sistemas seus usam a mesma saída de rede, eles dividem o limite.
+
+Ao estourar, a resposta é `429` com o header `Retry-After` em segundos:
+
+```http
+HTTP/1.1 429 Too Many Requests
+Retry-After: 37
+Content-Type: application/json
+
+{"detail": "Pedido foi limitado. Esperado disponível em 37 segundos."}
+```
+
+O texto de `detail` pode variar. Use o status e o header.
+
+Boas práticas:
+
+- Espere pelo menos `Retry-After` segundos antes de repetir.
+- Em erros `5xx` e `429`, use espera crescente (1 s, 2 s, 4 s, 8 s...) com um pouco de aleatoriedade.
+- Guarde em cache o que muda pouco: destinos, portos, embarcações, tipos de acomodação.
+- Não faça varredura de todas as datas para montar calendário: use `/datas-disponiveis/` ou `/viagens/` com `data_inicial` e `data_final`.
+- Precisa de mais? Fale com contato@ibarco.com.br.
+
+## Segurança
+
+- **Nunca exponha a chave de API** em aplicativo, navegador ou repositório. Ela fica no servidor.
+- **Use HTTPS** em todas as chamadas.
+- **Valide a assinatura dos webhooks** quando eles estiverem disponíveis (veja [Webhooks](/webhooks)).
+- **Rotação:** a chave pode ser trocada a pedido, a qualquer momento. Peça em contato@ibarco.com.br se suspeitar de vazamento.
+- **Dados pessoais:** nomes, documentos e datas de nascimento dos passageiros são dados pessoais (LGPD). Guarde só o necessário e não registre em log.

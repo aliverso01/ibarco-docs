@@ -1,0 +1,139 @@
+---
+title: "Webhooks"
+description: "Como acompanhar vendas hoje e os webhooks de saída planejados: eventos, formato, assinatura e reentregas."
+---
+
+<Badge icon="calendar" color="purple">Planejado</Badge>
+
+## Como funciona hoje
+
+<Badge icon="circle-check" color="green">Disponível</Badge>
+
+Para saber se uma venda foi paga ou cancelada, consulte [`GET /venda/check-status/{venda_id}`](/pagamento#acompanhar-a-confirmação).
+
+## O que está planejado
+
+A iBarco passa a avisar o seu sistema quando algo acontece com uma venda sua, sem você precisar consultar.
+
+<Warning>
+**Valores propostos, sujeitos a confirmação**
+
+Eventos, formato, prazos e política de reentrega abaixo podem mudar até a entrega.
+
+- **Cadastro:** feito pela equipe iBarco, a seu pedido. Você informa a URL (HTTPS) e recebe um **segredo** para validar a assinatura.
+- **Prazo de resposta:** seu endpoint deve responder `2xx` em até **10 segundos**.
+- **Reentregas:** sem `2xx` no prazo, a iBarco tenta de novo em **1 min, 5 min, 30 min, 2 h e 12 h**. Depois disso, desiste.
+</Warning>
+
+### Eventos
+
+| Evento | Quando |
+|---|---|
+| `venda.criada` | Uma venda sua foi criada. |
+| `venda.confirmada` | O gateway confirmou o pagamento. A venda está `CONFIRMED`. |
+| `venda.cancelada` | A venda foi cancelada. |
+| `venda.expirada` | O prazo de pagamento venceu sem pagamento (veja [Reserva de vaga](/reserva-de-vaga)). |
+
+### Requisição enviada ao seu endpoint
+
+`POST` com `Content-Type: application/json` e os headers:
+
+| Header | Exemplo | Descrição |
+|---|---|---|
+| `X-Ibarco-Event` | `venda.confirmada` | Nome do evento. |
+| `X-Ibarco-Delivery` | `5b8f0c2e-1a7d-4e3b-9f61-0c2d4e6a8b10` | Id único da entrega. Igual em todas as reentregas do mesmo aviso. |
+| `X-Ibarco-Signature` | `sha256=9f2c...` | HMAC-SHA256 do corpo bruto com o seu segredo, em hexadecimal. |
+
+Corpo:
+
+```json
+{
+  "evento": "venda.confirmada",
+  "ocorrido_em": "2026-10-06T10:21:03-03:00",
+  "venda": {
+    "id": 120345,
+    "status_reserva": "CONFIRMED",
+    "total": "750.00",
+    "viagem": {
+      "id": 90311,
+      "data_saida": "2026-11-20",
+      "horario_saida": "18:00:00",
+      "origem": "Belém",
+      "destino": "Santarém",
+      "embarcacao": "Comandante Exemplo",
+      "tipo_passagem": "Rede"
+    },
+    "passageiros": [
+      {"first_name": "Maria", "last_name": "da Silva Exemplo", "pax_type": "AD"},
+      {"first_name": "João", "last_name": "da Silva Exemplo", "pax_type": "AD"},
+      {"first_name": "Lucas", "last_name": "da Silva Exemplo", "pax_type": "CH"}
+    ]
+  }
+}
+```
+
+### Como tratar
+
+1. **Valide a assinatura** antes de qualquer coisa. Sem isso, qualquer um pode chamar a sua URL fingindo ser a iBarco.
+2. **Responda `2xx` rápido** e processe depois (fila). Trabalho demorado dentro da requisição gera reentrega.
+3. **Ignore duplicatas** pelo `X-Ibarco-Delivery`. A mesma entrega pode chegar mais de uma vez.
+4. **Não confie na ordem.** Use `ocorrido_em` e, em caso de dúvida, consulte `check-status`.
+
+### Validar a assinatura
+
+Calcule o HMAC-SHA256 do **corpo bruto** (os bytes exatos recebidos, antes de converter para JSON) com o seu segredo, e compare com o header em tempo constante.
+
+<Tabs>
+<Tab title="Python">
+
+```python
+import hashlib
+import hmac
+
+def assinatura_valida(corpo_bruto: bytes, header_assinatura: str, segredo: str) -> bool:
+    esperado = "sha256=" + hmac.new(
+        segredo.encode("utf-8"), corpo_bruto, hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(esperado, header_assinatura or "")
+
+# Exemplo com Flask:
+# from flask import Flask, request, abort
+# app = Flask(__name__)
+#
+# @app.post("/webhooks/ibarco")
+# def receber():
+#     if not assinatura_valida(request.get_data(), request.headers.get("X-Ibarco-Signature"), SEGREDO):
+#         abort(401)
+#     fila.enfileirar(request.get_json())
+#     return "", 204
+```
+
+</Tab>
+<Tab title="Node.js">
+
+```javascript
+const crypto = require("crypto");
+
+function assinaturaValida(corpoBruto, headerAssinatura, segredo) {
+  const esperado =
+    "sha256=" +
+    crypto.createHmac("sha256", segredo).update(corpoBruto).digest("hex");
+  const a = Buffer.from(esperado);
+  const b = Buffer.from(headerAssinatura || "");
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+// Exemplo com Express: use express.raw para ter o corpo bruto.
+// app.post("/webhooks/ibarco", express.raw({ type: "application/json" }), (req, res) => {
+//   if (!assinaturaValida(req.body, req.get("X-Ibarco-Signature"), process.env.IBARCO_WEBHOOK_SEGREDO)) {
+//     return res.sendStatus(401);
+//   }
+//   fila.enfileirar(JSON.parse(req.body.toString("utf8")));
+//   res.sendStatus(204);
+// });
+```
+
+</Tab>
+</Tabs>
+
+Guarde o segredo como guarda a chave de API: no servidor, fora do código. Se ele vazar, peça um novo à iBarco.
