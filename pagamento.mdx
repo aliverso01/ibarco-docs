@@ -17,6 +17,7 @@ Regras comuns:
 
 - **Vencimento:** a cobrança vence em 3 dias ou na data da saída, o que vier antes.
 - **Janela de venda:** se a viagem saiu da janela de venda entre a criação da venda e o pagamento, a cobrança é recusada com `409`.
+- **Venda expirada, cancelada ou já paga:** <Badge icon="clock" color="orange">Em breve</Badge> a cobrança é recusada com `409` e `status_reserva` no corpo. O prazo de pagamento é `reserva_expira_em`; veja [Reserva de vaga](/reserva-de-vaga).
 - **Token da venda:** todos os endpoints abaixo exigem a prova de acesso à venda (`?t=<token_acesso>`). Veja [Acesso à venda](#acesso-à-venda).
 - **Cada chamada cria uma nova cobrança no gateway.** A venda guarda só a última (`payment_intent_id`). Não repita a chamada sem necessidade.
 - **A confirmação nunca vem na resposta da chamada.** Quem confirma é o gateway, por webhook, para a iBarco. Veja [Acompanhar a confirmação](#acompanhar-a-confirmação).
@@ -186,6 +187,7 @@ Erros de `process-payment` e `payment-link`:
 | `403` | Sem token da venda e sem ser equipe ou comprador. | `{"detail": "Sem acesso a esta venda. Envie o token da venda (?t=) ou autentique-se."}` |
 | `404` | Venda inexistente. | `{"error": "Venda não encontrada."}` |
 | `409` | Viagem saiu da janela de venda. | `{"detail": "<motivo>", "error": "<motivo>"}` |
+| `409` | Venda `EXPIRED`, `CANCELED` ou já paga. <Badge icon="clock" color="orange">Em breve</Badge> | `{"detail": "<motivo>", "error": "<motivo>", "status_reserva": "EXPIRED"}` |
 | `4xx` | Recusa do gateway (CPF inválido, cartão recusado...). O status é o devolvido pelo gateway. | `{"error": "Erro ao processar pagamento", "details": {...}}` ou `{"error": "<descrição>", "details": {...}}` |
 | `500` | Falha interna. | `{"error": "..."}` |
 
@@ -208,7 +210,7 @@ Resposta `200`:
 }
 ```
 
-Erros: `400` `{"error": "Valor da venda inválido para pagamento."}`; `403` sem prova de acesso à venda; `404` venda inexistente; `409` fora da janela de venda; `500` falha interna ou Stripe indisponível.
+Erros: `400` `{"error": "Valor da venda inválido para pagamento."}`; `403` sem prova de acesso à venda; `404` venda inexistente; `409` fora da janela de venda, ou venda expirada, cancelada ou já paga; `500` falha interna ou Stripe indisponível.
 
 ## Acompanhar a confirmação
 

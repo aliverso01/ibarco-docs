@@ -32,7 +32,7 @@ Autenticação: **Chave** = `X-Api-Key`; **Bearer** = `Authorization: Bearer <ac
 | `GET` | `/datas-disponiveis/` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Datas com saída](/busca#datas-com-saída) |
 | `GET` | `/viagens/` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Buscar viagens](/busca#buscar-viagens) |
 | `GET` | `/viagens/{id}/` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Detalhe da viagem](/busca#detalhe-da-viagem) |
-| `GET` | `/viagens/{id}/disponibilidade` | Chave ou Bearer | <Badge icon="calendar" color="purple">Planejado</Badge> | [Disponibilidade da viagem](/reserva-de-vaga#disponibilidade-da-viagem) |
+| `GET` | `/viagens/{id}/disponibilidade` | Chave ou Bearer | <Badge icon="clock" color="orange">Em breve</Badge> | [Disponibilidade da viagem](/reserva-de-vaga#disponibilidade-da-viagem) |
 | `GET` | `/global-tax-percentual/1` | Nenhuma | <Badge icon="circle-check" color="green">Disponível</Badge> | [Taxa de serviço](/conceitos#taxa-de-serviço) |
 
 ## Compra
@@ -67,4 +67,4 @@ A exigência do token da venda nesses endpoints está <Badge icon="clock" color=
 | Evento | Status | Seção |
 |---|---|---|
 | `venda.criada`, `venda.confirmada`, `venda.cancelada` | <Badge icon="clock" color="orange">Em breve</Badge> | [Webhooks](/webhooks) |
-| `venda.expirada` | <Badge icon="calendar" color="purple">Planejado</Badge> | [Webhooks](/webhooks#eventos) |
+| `venda.expirada` | <Badge icon="clock" color="orange">Em breve</Badge> | [Webhooks](/webhooks#eventos) |

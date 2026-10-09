@@ -248,7 +248,7 @@ Viagem que já partiu: `"Esta viagem já partiu e não está mais disponível pa
 
 ## Vagas
 
-O campo `avaliable_seats` (com essa grafia) é a capacidade cadastrada para a viagem. Ele **não** é um saldo que diminui a cada venda. Valores `0` ou `null` significam "não informado". Veja [Reserva de vaga e expiração](/reserva-de-vaga) para o que está planejado.
+O campo `avaliable_seats` (com essa grafia) é a **capacidade** da acomodação nesta saída, não um saldo. `null` significa sem controle de vagas (vende sem limite) e `0` significa lotada. <Badge icon="clock" color="orange">Em breve</Badge> O saldo vem em `vagas_disponiveis` e diminui a cada venda. Veja [Reserva de vaga e expiração](/reserva-de-vaga).
 
 ## Status da venda
 
@@ -258,6 +258,6 @@ O campo `avaliable_seats` (com essa grafia) é a capacidade cadastrada para a vi
 | `PENDING` | Mesmo significado de `CREATED`. Trate os dois da mesma forma. |
 | `CONFIRMED` | Pagamento confirmado pelo gateway. Bilhete enviado ao comprador. |
 | `CANCELED` | Venda cancelada. |
-| `EXPIRED` | <Badge icon="calendar" color="purple">Planejado</Badge> Prazo de pagamento venceu e a vaga foi liberada. |
+| `EXPIRED` | <Badge icon="clock" color="orange">Em breve</Badge> O prazo de pagamento venceu e a vaga foi liberada. Status final, sem taxa. |
 
 Novos status podem surgir (veja a [política de versionamento](/index#política-de-versionamento)). Trate um valor desconhecido como "aguardando pagamento".
