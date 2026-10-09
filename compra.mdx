@@ -290,23 +290,24 @@ Erros: `401` sem credencial; `404` venda inexistente (`{"detail": "Não encontra
 
 ## Idempotência
 
-<Badge icon="calendar" color="purple">Planejado</Badge>
+<Badge icon="clock" color="orange">Em breve</Badge>
 
-Uma falha de rede no meio de `POST /vendas` deixa a dúvida: a venda foi criada ou não? Repetir a chamada pode gerar venda duplicada. O header `Idempotency-Key` resolve isso: repetir com a mesma chave devolve a mesma resposta, sem criar nada novo.
+Uma falha de rede no meio de `POST /vendas` deixa a dúvida: a venda foi criada ou não? Repetir a chamada sem proteção gera venda duplicada. O header `Idempotency-Key` resolve isso: repetir com a mesma chave e o mesmo corpo devolve a mesma resposta, sem criar nada novo, sem reenviar e-mail e sem nova cobrança.
 
-<Warning>
-**Valores propostos, sujeitos a confirmação**
+- Header `Idempotency-Key`, de 1 a **255 caracteres**. Fora disso, **`400`**. Use um UUID v4 por operação.
+- Vale em `POST /vendas`, `POST /venda/payment-link/{id}` e `POST /venda/process-payment/{id}`. Nas demais rotas o header é ignorado.
+- A chave vale por **24 horas**. Depois disso, a mesma chave pode ser usada de novo como se fosse nova.
+- O escopo é a sua credencial e a rota: a mesma chave em outra credencial, ou em outra rota (por exemplo `payment-link` e `process-payment`), é outra operação.
+- Sem o header, nada muda: cada chamada é uma operação nova.
 
-Prazos e códigos abaixo podem mudar até a entrega.
+| Situação | Resposta |
+|---|---|
+| Mesma chave, mesmo corpo, primeira chamada já concluída | A resposta original (mesmo status e mesmo corpo, com o mesmo `id` de venda), mais o header `Idempotent-Replayed: true`. |
+| Mesma chave, corpo diferente | **`422`**, com a mensagem `Esta Idempotency-Key já foi usada com um corpo diferente.` Use uma chave nova para uma operação nova. |
+| Mesma chave enquanto a primeira chamada ainda está em andamento | **`409`**. Espere alguns segundos e repita. |
+| Chave com mais de 255 caracteres ou vazia | **`400`**. |
 
-- Header `Idempotency-Key`, até **255 caracteres**. Use um UUID v4 por operação.
-- Vale em `POST /vendas`, `POST /venda/payment-link/{id}` e `POST /venda/process-payment/{id}`.
-- Mesma chave e mesmo corpo: a API devolve a resposta original (mesmo status e corpo), sem novo efeito.
-- Mesma chave com corpo diferente: **`422`**.
-- Mesma chave enquanto a primeira requisição ainda está em andamento: **`409`**. Espere e tente de novo.
-- A chave vale por **24 horas**.
-- O escopo é a credencial: chaves iguais de parceiros diferentes não se misturam.
-</Warning>
+O corpo é comparado pelo conteúdo: a ordem dos campos e os espaços não contam.
 
 ```bash
 curl -X POST https://sandbox-api.ibarco.com.br/api/vendas \
@@ -316,4 +317,9 @@ curl -X POST https://sandbox-api.ibarco.com.br/api/vendas \
   -d '{"viagem": 90311, "billing_name": "Maria da Silva Exemplo", "passengers": [ ... ]}'
 ```
 
-Enquanto a idempotência não estiver disponível, o header é ignorado. Se `POST /vendas` falhar sem resposta (timeout, conexão caída), não repita às cegas: fale com o suporte para confirmar se a venda foi criada antes de tentar de novo.
+### O que fica guardado
+
+Só respostas de **sucesso** (`2xx`) ficam guardadas. Uma resposta de erro libera a chave: você corrige o corpo e repete com a mesma chave.
+
+- Em `POST /vendas`, um erro desfaz a venda por inteiro. Repetir com a mesma chave é seguro.
+- Em `payment-link` e `process-payment`, a cobrança pode já ter sido criada no gateway quando o erro acontece depois dela (por exemplo, falha ao gerar o QR Code do Pix). Se receber `5xx` ou ficar sem resposta nessas rotas, **consulte o status da venda** ([`GET /venda/check-status/{id}`](/pagamento#acompanhar-a-confirmação)) antes de repetir. Repetir com a mesma chave depois de um erro cria uma nova tentativa de cobrança.

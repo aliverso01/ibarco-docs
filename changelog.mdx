@@ -11,6 +11,7 @@ Mudanças na API e nesta documentação, da mais recente para a mais antiga. Mud
 - **Desconto de 100 %:** nova seção em [Conceitos](/conceitos#desconto-integral). O desconto está em vigor e vem da faixa etária da embarcação, da promoção da viagem ou de cupom; a seção mostra o que aparece na resposta e o que acontece no pagamento de uma venda de valor zero.
 - **Desconto integral:** os campos por passageiro (`discount`, `price_with_discount`, `total`) não aplicam o limite de 100 %; o valor cobrado é o de `valor_final`. Cupom com teto de desconto e motivos de recusa do cupom na volta esclarecidos em [Conceitos](/conceitos#ida-e-volta).
 - **Faixas de retenção do cancelamento:** 7 dias (168 horas) ou mais retém 10 %; de 48 horas a menos de 7 dias, 20 %; menos de 48 horas, 100 %. Veja [Cancelamento](/cancelamento#faixas-de-retenção).
+- <Badge icon="clock" color="orange">Em breve</Badge> **Idempotência:** `POST /vendas`, `POST /venda/payment-link/{id}` e `POST /venda/process-payment/{id}` passam a aceitar o header `Idempotency-Key`. Repetir com a mesma chave e o mesmo corpo devolve a resposta original (header `Idempotent-Replayed: true`); corpo diferente dá `422`; chamada ainda em andamento dá `409`. Sem o header, nada muda. Veja [Compra](/compra#idempotência).
 
 ## 07/10/2026
 
