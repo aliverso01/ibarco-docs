@@ -122,6 +122,7 @@ Campos da venda:
 | `desconto_cupom` | Desconto do cupom, em R$. |
 | `valor_final` | **Valor a cobrar.** `subtotal − desconto_cupom`. |
 | `status_reserva` | `CREATED` ao nascer (aguardando pagamento). Veja [Status da venda](/conceitos#status-da-venda). |
+| `vagas_reservadas`, `reserva_expira_em` | <Badge icon="clock" color="orange">Em breve</Badge> Vagas que a venda ocupa e prazo para pagar antes de expirar. Veja [Reserva de vaga](/reserva-de-vaga#venda). |
 | `is_cancelable` | Se a venda ainda pode ser cancelada. |
 | `total_cancelation_fee` | Taxa retida em caso de cancelamento. Veja [Cancelamento](/cancelamento). |
 | `bilhete_url` | Link do cartão de embarque em PDF. Só tem valor de embarque depois do pagamento confirmado. |
@@ -144,7 +145,9 @@ Erros:
 | `400` | `pax_type` não bate com a idade. | `{"error": {"detail": ["Passageiro 'Lucas' de 9 anos foi informado como 'AD' mas deveria ser 'Criança (CH)'."], "status_code": ["400"]}}` |
 | `400` | Viagem fora da janela de venda (trava de antecedência ou já partiu). | `{"error": {"detail": ["As passagens de Suíte para esta viagem precisam ser compradas com 15 dias de antecedência. O prazo para esta saída já encerrou."], "status_code": ["409"]}}` |
 | `401` | Sem credencial. | `{"detail": "As credenciais de autenticação não foram fornecidas."}` |
-| `500` | Cupom recusado na criação, ou falha interna. | `{"error": "Erro inesperado: ..."}` |
+| `409` | Sem vaga para o grupo. <Badge icon="clock" color="orange">Em breve</Badge> | `{"detail": "<motivo>", "error": {"detail": ["<motivo>"]}, "vagas_disponiveis": 2, "necessarias": 3}` |
+| `400` | Cupom recusado na criação. <Badge icon="clock" color="orange">Em breve</Badge> | `{"error": {"detail": "<motivo da recusa>", ...}}` |
+| `500` | Cupom recusado na criação (até o deploy), ou falha interna. | `{"error": "Erro inesperado: ..."}` |
 
 <Warning>
 **Janela de venda: confira `error.status_code`**
@@ -155,7 +158,7 @@ Na criação da venda, a recusa por janela de venda chega com HTTP `400` e `"sta
 <Warning>
 **Cupom: valide antes de criar a venda**
 
-Se o cupom for recusado durante a criação, a venda **não** é criada e a resposta é `500` com `"Erro inesperado: ..."`. Valide o cupom com [`POST /cupons/validar`](#validar-cupom) e só mande `cupom_codigo` se ele vier `valido: true`.
+Se o cupom for recusado durante a criação, a venda **não** é criada e a resposta é `400` com o motivo em `error` <Badge icon="clock" color="orange">Em breve</Badge>; até o deploy, é `500` com `"Erro inesperado: ..."`. Valide o cupom com [`POST /cupons/validar`](#validar-cupom) e só mande `cupom_codigo` se ele vier `valido: true`.
 </Warning>
 
 ### Campos ignorados na criação

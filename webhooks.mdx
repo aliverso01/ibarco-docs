@@ -29,7 +29,7 @@ A iBarco avisa o seu sistema quando algo acontece com uma venda sua, sem você p
 | `venda.criada` | Uma venda sua foi criada. |
 | `venda.confirmada` | O gateway confirmou o pagamento. A venda está `CONFIRMED`. |
 | `venda.cancelada` | A venda foi cancelada. |
-| `venda.expirada` <Badge icon="calendar" color="purple">Planejado</Badge> | O prazo de pagamento venceu sem pagamento (veja [Reserva de vaga](/reserva-de-vaga)). Depende da reserva de vaga com expiração. |
+| `venda.expirada` <Badge icon="clock" color="orange">Em breve</Badge> | O prazo de pagamento venceu sem pagamento (veja [Reserva de vaga](/reserva-de-vaga)). A venda está `EXPIRED` e as vagas voltaram para a viagem. O corpo é igual ao dos outros eventos, com `status_reserva` `EXPIRED`. |
 
 ### Requisição enviada ao seu endpoint
 
@@ -68,6 +68,34 @@ Corpo:
   }
 }
 ```
+
+Exemplo de `venda.expirada` (mesmo envelope do evento acima, com `status_reserva` `EXPIRED`):
+
+```json
+{
+  "evento": "venda.expirada",
+  "ocorrido_em": "2026-10-10T10:15:42-03:00",
+  "venda": {
+    "id": 120346,
+    "status_reserva": "EXPIRED",
+    "total": "750.00",
+    "viagem": {
+      "id": 90311,
+      "data_saida": "2026-11-20",
+      "horario_saida": "18:00:00",
+      "origem": "Belém",
+      "destino": "Santarém",
+      "embarcacao": "Comandante Exemplo",
+      "tipo_passagem": "Rede"
+    },
+    "passageiros": [
+      {"first_name": "Maria", "last_name": "da Silva Exemplo", "pax_type": "AD"}
+    ]
+  }
+}
+```
+
+Ao receber `venda.expirada`, libere o carrinho do seu lado: as vagas já voltaram para a viagem e o link de pagamento deixou de valer.
 
 ### Como tratar
 

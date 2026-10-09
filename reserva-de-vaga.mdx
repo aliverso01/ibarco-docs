@@ -1,43 +1,63 @@
 ---
 title: "Reserva de vaga e expiração"
-description: "Como a venda se relaciona com as vagas da viagem hoje, e a reserva de vaga com expiração planejada."
+description: "Como a venda segura a vaga enquanto o cliente paga, quando ela expira e como consultar a disponibilidade da viagem."
 ---
 
-<Badge icon="calendar" color="purple">Planejado</Badge>
+<Badge icon="clock" color="orange">Em breve</Badge> Entra em produção com o próximo deploy.
 
-## Como funciona hoje
+A venda **segura a vaga** enquanto o cliente paga e **devolve a vaga** se ele não pagar no prazo.
 
-<Badge icon="circle-check" color="green">Disponível</Badge>
+## Como funciona
 
-- Criar a venda **não reserva vaga**. Duas vendas podem disputar a última vaga, e a confirmação depende do barco.
-- A venda em `CREATED` (ou `PENDING`) **não expira** sozinha. A cobrança no gateway vence (3 dias ou na data da saída), mas a venda continua aguardando.
-- `avaliable_seats` é a capacidade cadastrada, não um saldo. Ele não diminui a cada venda.
-
-Na prática: a venda só está garantida depois de `CONFIRMED`. Não prometa vaga ao cliente antes disso.
-
-## O que está planejado
-
-A venda passa a segurar a vaga enquanto o cliente paga, e a liberar a vaga se ele não pagar.
-
-<Warning>
-**Valores propostos, sujeitos a confirmação**
-
-Prazos, códigos e campos abaixo podem mudar até a entrega.
-
-- **Criar a venda desconta as vagas** da viagem.
+- **Criar a venda reserva as vagas** da viagem.
   - Rede (sem assento numerado): uma vaga por passageiro.
-  - Acomodação com assento numerado (suíte, camarote, poltrona): uma unidade a cada `pessoas_por_unidade` passageiros.
-- **Sem vaga suficiente:** `POST /vendas` responde `409`.
-- **Retenção:** a vaga fica presa até o vencimento da cobrança. Se nenhuma cobrança for iniciada, o teto é de **24 horas** a partir da criação da venda.
-- **Expiração:** vencido o prazo sem pagamento, a venda vira `EXPIRED`, as vagas voltam para a viagem e o link de pagamento deixa de valer.
-- A venda ganha o campo `reserva_expira_em` (data e hora, ISO 8601, horário de Brasília).
-</Warning>
+  - Acomodação com assento numerado (suíte, camarote, poltrona): uma unidade a cada `pessoas_por_unidade` passageiros, arredondando para cima.
+- **A vaga fica presa** enquanto a venda está `CREATED`, `PENDING`, `CONFIRMED` ou `APPROVED`. Venda `CANCELED` ou `EXPIRED` não ocupa vaga.
+- **Prazo (`reserva_expira_em`).** Ao criar a venda, o prazo é de **24 horas**. Ao criar uma cobrança, o prazo passa a ser o vencimento dela, se for maior: no Asaas, o fim do dia de vencimento; no Stripe, 24 horas depois da criação do checkout. O prazo **nunca passa do fechamento da janela de venda** (horário de saída menos a antecedência mínima da acomodação).
+- **Expiração.** Vencido o prazo sem pagamento, a venda vira `EXPIRED`, as vagas voltam para a viagem, a cobrança pendente é cancelada e o evento [`venda.expirada`](/webhooks#eventos) é enviado. A verificação roda a cada 5 minutos; se o cliente tentar pagar antes disso, a venda expira na hora e a chamada responde `409`.
+- **Pagamento depois da expiração.** Se o pagamento for confirmado depois da expiração e ainda houver vaga, a venda volta a `CONFIRMED`. Se não houver, ela continua `EXPIRED` e a iBarco entra em contato para estornar.
+- **Viagem sem controle de vagas.** Quando `avaliable_seats` é `null`, a viagem vende sem limite e nunca devolve `409` por falta de vaga. As vendas ainda expiram no prazo normal.
 
-### Disponibilidade da viagem
+## Campos novos
+
+### Viagem
+
+`GET /viagens/` e `GET /viagens/{id}`:
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `avaliable_seats` | inteiro ou `null` | **Capacidade** desta acomodação nesta saída. `null` = sem controle de vagas (vende sem limite). `0` = lotada. |
+| `vagas_disponiveis` | inteiro ou `null` | Saldo: capacidade menos as vagas das vendas ativas. `null` quando não há controle de vagas. |
+| `controle_de_vagas` | booleano | `true` quando `avaliable_seats` não é `null`. |
+| `ocupacao_percentual` | decimal ou `null` | De 0 a 100, com uma casa. `null` sem controle de vagas; `100.0` com capacidade `0`. |
+| `disponivel_para_venda`, `motivo_indisponivel` | booleano, string | Também ficam `false` e `"Esta viagem está lotada para esta acomodação. Escolha outra data ou acomodação."` quando o saldo é `0`. |
+
+A busca com `adultos`, `criancas` e `idosos` (grupo com mais de um passageiro) só devolve viagens que comportam o grupo: sem controle de vagas, com saldo suficiente ou, no assento numerado, com ao menos uma unidade livre. A conta exata é a da [disponibilidade da viagem](#disponibilidade-da-viagem).
+
+### Venda
+
+`POST /vendas` e `GET /vendas/{id}`. Os dois campos são somente leitura.
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `vagas_reservadas` | inteiro | Vagas (ou unidades) que a venda ocupa enquanto está ativa. |
+| `reserva_expira_em` | string ISO 8601 ou `null` | Prazo da reserva enquanto a venda está `CREATED` ou `PENDING`. Horário de Brasília. |
+
+```json
+{
+  "id": 120345,
+  "status_reserva": "CREATED",
+  "vagas_reservadas": 3,
+  "reserva_expira_em": "2026-10-10T10:15:42-03:00",
+  "...": "demais campos da venda"
+}
+```
+
+## Disponibilidade da viagem
 
 #### `GET /viagens/{id}/disponibilidade`
 
-Confere se a viagem comporta o grupo antes de criar a venda.
+Confere se a viagem comporta o grupo antes de criar a venda. Aceita chave de API ou Bearer. A resposta não é guardada em cache e **não segura vaga**.
 
 | Parâmetro | Tipo | Descrição |
 |---|---|---|
@@ -45,21 +65,28 @@ Confere se a viagem comporta o grupo antes de criar a venda.
 | `criancas` | inteiro | Quantidade de crianças. |
 | `idosos` | inteiro | Quantidade de idosos. |
 
+Sem parâmetros, a conta é para 1 adulto.
+
 ```bash
 curl "https://sandbox-api.ibarco.com.br/api/viagens/90311/disponibilidade?adultos=2&criancas=1&idosos=0" \
   -H "X-Api-Key: SUA_CHAVE_DE_API"
 ```
 
-Resposta `200` proposta:
+Resposta `200`:
 
 <Tabs>
 <Tab title="Comporta">
 
 ```json
 {
+  "viagem": 90311,
+  "controle_de_vagas": true,
+  "capacidade": 40,
   "vagas_disponiveis": 37,
+  "necessarias": 3,
   "comporta": true,
-  "motivo": null
+  "motivo": null,
+  "disponivel_para_venda": true
 }
 ```
 
@@ -68,28 +95,49 @@ Resposta `200` proposta:
 
 ```json
 {
+  "viagem": 90311,
+  "controle_de_vagas": true,
+  "capacidade": 40,
   "vagas_disponiveis": 2,
+  "necessarias": 3,
   "comporta": false,
-  "motivo": "Restam 2 vagas nesta viagem e o grupo tem 3 passageiros."
+  "motivo": "Restam 2 vagas nesta viagem e o grupo de 3 passageiros precisa de 3 vagas.",
+  "disponivel_para_venda": true
 }
 ```
 
 </Tab>
 </Tabs>
 
-### Venda com expiração
+| Campo | Descrição |
+|---|---|
+| `controle_de_vagas`, `capacidade`, `vagas_disponiveis` | `capacidade` e `vagas_disponiveis` vêm `null` quando a viagem não controla vagas (`comporta` é `true`). |
+| `necessarias` | Vagas que o grupo ocupa. No assento numerado, são unidades (`ceil(passageiros / pessoas_por_unidade)`), e o `motivo` usa o nome da unidade (por exemplo, "Restam 1 camarote..."). |
+| `comporta` | `true` se há vaga para o grupo e a viagem está na janela de venda. |
+| `motivo` | Texto para mostrar ao cliente quando `comporta` é `false`. Fora da janela de venda, traz o motivo da trava de antecedência. |
+| `disponivel_para_venda` | `false` quando a viagem está fora da janela de venda. |
+
+## Sem vaga na viagem
+
+`POST /vendas` responde `409` quando o grupo não cabe, e a venda **não** é criada. O corpo traz o texto pronto para o cliente e os números:
 
 ```json
 {
-  "id": 120345,
-  "status_reserva": "CREATED",
-  "reserva_expira_em": "2026-10-09T10:15:42-03:00",
-  "...": "demais campos da venda"
+  "detail": "Restam 2 vagas nesta viagem e o grupo de 3 passageiros precisa de 3 vagas.",
+  "error": {"detail": ["Restam 2 vagas nesta viagem e o grupo de 3 passageiros precisa de 3 vagas."]},
+  "vagas_disponiveis": 2,
+  "necessarias": 3
 }
 ```
 
-### Como se preparar
+Com a viagem lotada, `detail` é `"Esta viagem está lotada para esta acomodação. Escolha outra data ou acomodação."`. A resposta `409` não consome a `Idempotency-Key`: depois de abrir vaga, você pode repetir com a mesma chave (veja [Idempotência](/compra#idempotência)).
 
-- Trate `EXPIRED` como um status final, igual a `CANCELED`, mas sem taxa.
-- Trate `409` em `POST /vendas` como "sem vaga" e ofereça outra saída ou acomodação.
-- Mostre ao cliente o prazo de `reserva_expira_em`.
+Os endpoints de cobrança (`payment-link`, `process-payment` e `stripe-checkout`) respondem `409` com `{"detail", "error", "status_reserva"}` quando a venda está `EXPIRED`, `CANCELED` ou já paga. Veja [Pagamento](/pagamento).
+
+## Como se preparar
+
+- Trate `EXPIRED` como um status final, igual a `CANCELED`, mas sem taxa. `is_cancelable` é `false` e o [cancelamento](/cancelamento) responde `pode_cancelar: false`.
+- Trate `409` em `POST /vendas` como "sem vaga": mostre `detail` e ofereça outra saída ou acomodação. Use a disponibilidade antes de montar o carrinho.
+- Mostre ao cliente o prazo de `reserva_expira_em` e inicie a cobrança antes dele.
+- Para uma venda expirada, crie uma nova venda. O link de pagamento antigo deixa de valer.
+- Assine o evento [`venda.expirada`](/webhooks#eventos) para liberar o carrinho do seu lado.
