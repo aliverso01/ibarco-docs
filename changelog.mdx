@@ -5,6 +5,12 @@ description: "Mudanças na API e nesta documentação, da mais recente para a ma
 
 Mudanças na API e nesta documentação, da mais recente para a mais antiga. Mudanças incompatíveis são avisadas por e-mail com 30 dias de antecedência e registradas aqui (veja a [política de versionamento](/index#política-de-versionamento)).
 
+## 09/10/2026
+
+<Badge icon="clock" color="orange">Em breve</Badge> Entra em produção com o próximo deploy.
+
+- **Chave de API e webhook:** a iBarco passa a emitir e revogar chaves e a gerenciar o webhook do parceiro. A chave e o segredo aparecem uma única vez; a troca de chave é feita emitindo a nova antes de revogar a antiga. Novo evento `webhook.teste` e reenvio manual com o mesmo `X-Ibarco-Delivery`. Veja [Troca de chave](/autenticacao#troca-de-chave) e [Segredo, evento de teste e reenvio](/webhooks#segredo-evento-de-teste-e-reenvio).
+
 ## 07/10/2026
 
 <Badge icon="clock" color="orange">Em breve</Badge> Entra em produção com o próximo deploy.

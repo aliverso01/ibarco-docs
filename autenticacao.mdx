@@ -28,7 +28,25 @@ Regras de uso:
 - **Guarde a chave no servidor.** Nunca a coloque em aplicativo móvel, JavaScript de navegador ou repositório de código. Quem tem a chave fala com a API em nome da sua empresa.
 - Leia a chave de uma variável de ambiente ou de um cofre de segredos.
 - Use sempre HTTPS. A chave trafega em texto no header.
-- Suspeita de vazamento? Peça a **rotação** em contato@ibarco.com.br. A iBarco emite uma chave nova e revoga a antiga.
+- Suspeita de vazamento? Avise a iBarco em contato@ibarco.com.br para revogar a chave na hora e emitir outra. Veja [Troca de chave](/autenticacao#troca-de-chave).
+
+## Como você recebe a chave
+
+- A iBarco cadastra a sua empresa e emite a chave. A chave chega até você por um canal seguro combinado com a equipe, nunca por e-mail aberto ou chat público.
+- A chave completa é mostrada **uma única vez**, no momento da emissão. A iBarco não consegue consultá-la depois: se você perder, a saída é emitir outra.
+- O **prefixo** (os primeiros caracteres, antes do ponto) identifica a chave. Informe só o prefixo ao falar com o suporte, nunca a chave inteira.
+- As vendas feitas com a sua chave ficam registradas no nome da sua empresa, e é por elas que os seus [webhooks](/webhooks) são disparados.
+
+## Troca de chave
+
+A troca não precisa parar a sua integração. A iBarco emite a chave nova **antes** de revogar a antiga, e as duas valem ao mesmo tempo até você confirmar:
+
+1. Peça a troca em contato@ibarco.com.br. A iBarco emite uma chave nova e envia por canal seguro. A antiga continua valendo.
+2. Coloque a chave nova no seu servidor (variável de ambiente ou cofre de segredos) e confirme que as chamadas funcionam com ela.
+3. Avise a iBarco de que já usa a nova. A iBarco revoga a antiga.
+4. A revogação vale **na hora e não pode ser desfeita**. Qualquer chamada com a chave antiga passa a ser recusada como credencial inválida (veja [Erros e limites](/erros)).
+
+Em caso de vazamento, não espere o passo 3: peça a revogação imediata. As chamadas com a chave revogada falham até você configurar a nova.
 
 ## Token de usuário (JWT)
 

@@ -134,3 +134,34 @@ function assinaturaValida(corpoBruto, headerAssinatura, segredo) {
 </Tabs>
 
 Guarde o segredo como guarda a chave de API: no servidor, fora do código. Se ele vazar, peça um novo à iBarco.
+
+## Segredo, evento de teste e reenvio
+
+<Badge icon="clock" color="orange">Em breve</Badge>
+
+A iBarco cadastra e mantém o seu webhook, a seu pedido: URL (HTTPS), eventos que você recebe (por padrão, todos) e descrição. O que você precisa saber para operar:
+
+- **Segredo.** Mostrado **uma única vez**, ao cadastrar o webhook, e enviado por canal seguro. A iBarco não consegue consultá-lo depois.
+- **Troca do segredo.** Quando a iBarco gera um segredo novo, o anterior **deixa de valer na hora**: o próximo aviso já sai assinado com o novo. Combine um horário com a iBarco e deixe o segredo novo configurado no seu servidor antes. Um aviso que falhar na conferência da assinatura e responder fora de `2xx` entra no ciclo normal de reentrega e sai assinado com o segredo novo.
+- **Webhook desativado.** Enquanto estiver desativado, não recebe avisos. Pergunte à iBarco se parar de receber.
+
+### Evento de teste
+
+A iBarco pode enviar um evento de teste para o seu endpoint, para você validar URL, assinatura e resposta antes de vender. Ele passa pelo mesmo caminho dos avisos reais: mesmos headers e mesma assinatura `X-Ibarco-Signature`. O `X-Ibarco-Event` é `webhook.teste`.
+
+```json
+{
+  "evento": "webhook.teste",
+  "ocorrido_em": "2026-10-09T10:30:00-03:00",
+  "teste": true,
+  "mensagem": "Evento de teste enviado pelo painel do iBarco. Confira a assinatura e responda 2xx.",
+  "webhook": { "id": 21, "parceiro": "Agência Exemplo" },
+  "venda": null
+}
+```
+
+Responda `2xx` em até 10 segundos. O teste não tem reentrega automática: se o seu endpoint falhar, a iBarco vê o erro na hora e envia de novo quando você pedir.
+
+### Reenvio
+
+A iBarco pode reenviar um aviso (por exemplo, depois de uma indisponibilidade sua). O reenvio sai com o **mesmo corpo** e o **mesmo `X-Ibarco-Delivery`** do original. Trate o `X-Ibarco-Delivery` como chave de deduplicação: se já processou esse valor, ignore o reenvio e responda `2xx`.
