@@ -43,6 +43,44 @@ O barco *Comandante Exemplo* sai de Belém para Santarém em 20/11/2026 às 18:0
 
 O passageiro escolhe a acomodação quando você envia o `id` da viagem certa na compra. Para listar as acomodações de uma saída, use [`GET /viagem/acomodacoes/`](/busca#acomodações-de-uma-saída).
 
+## Ida e volta
+
+Cada venda é de **uma viagem**: um trecho, uma saída, uma acomodação. A API não tem vínculo entre ida e volta: não existe campo que ligue duas vendas nem criação das duas de uma vez.
+
+Ida e volta são **duas vendas independentes**:
+
+| | Ida | Volta |
+|---|---|---|
+| Criação | `POST /vendas` com a `viagem` da ida. | Outro `POST /vendas`, com a `viagem` da volta (trecho invertido, outra data). |
+| Cobrança | Uma cobrança com o `id` da venda. | Outra cobrança, com o `id` da outra venda. |
+| Cancelamento | `POST /venda/cancelamento/{venda_id}` com o `id` da ida. | O mesmo caminho, com o `id` da volta. Cancelar uma não cancela a outra. |
+| Status e token | `status_reserva` e `token_acesso` próprios. | Próprios. |
+| Cupom | Aplicado sobre o subtotal desta venda. | Aplicado só se você enviar o código nesta venda também. |
+
+O cupom pode ser recusado na volta mesmo com o código enviado: o limite de usos por cliente (contado por e-mail ou CPF) pode já ter sido atingido pela ida, o limite total de usos pode ter acabado, ou o cupom pode valer só para certos trechos, e a volta é o trecho invertido. Trate a recusa do cupom na criação da volta e decida se segue sem o desconto.
+
+A retenção do cancelamento também é por venda: ela conta o tempo que falta para a saída **daquela** viagem.
+
+Como agrupar do seu lado:
+
+<Steps>
+  <Step title="Guarde um identificador de pedido">
+    Crie o seu próprio identificador de ida e volta e guarde nele os dois `id` de venda e os dois `token_acesso`.
+  </Step>
+  <Step title="Busque a volta separadamente">
+    Faça uma busca nova, com origem e destino trocados e a data da volta. Veja [Busca](/busca).
+  </Step>
+  <Step title="Crie as duas vendas">
+    São duas chamadas. Se a segunda falhar, decida no seu sistema se mantém a primeira ou a cancela.
+  </Step>
+  <Step title="Confirme o pedido quando as duas estiverem pagas">
+    Cobre cada venda e trate o pedido como confirmado só quando as duas estiverem `CONFIRMED`.
+  </Step>
+  <Step title="Mostre os valores por venda">
+    O total do pedido é a soma dos dois `valor_final`. Deixe claro ao cliente que cada trecho se cancela à parte.
+  </Step>
+</Steps>
+
 ## Preço
 
 O cálculo é sempre feito pela API. Use os valores que ela devolve e não remonte a conta no seu sistema: assim o valor exibido bate com o valor cobrado.
@@ -72,6 +110,48 @@ Viagem com `price` 250.00, sem promoção, taxa de serviço de 20 %, criança co
 | Idoso | 20 % | 250.00 × 0.80 × 1.20 | 240.00 |
 
 Dois adultos e uma criança: 300.00 + 300.00 + 150.00 = **750.00**.
+
+### Desconto integral
+
+O desconto de 100 % está em vigor: a API aceita e aplica. Ele não vale para toda venda. Só aparece quando uma destas fontes chega a 100 %:
+
+| Fonte | Quem define | Onde aparece |
+|---|---|---|
+| Faixa etária da embarcação | Cadastro da embarcação (`politica_preco`, campo `discount`, em % por `pax_type`). O parceiro só consulta, em `GET /politica-faixa-etaria/`. | `faixas_etarias[].desconto` e `preco` da viagem; `discount`, `price_with_discount` e `total` do passageiro. |
+| Promoção da viagem | Campo `desconto` da viagem, em %. | `desconto` da viagem; soma com o da faixa. |
+| Cupom | Cupom percentual de 100 %, cadastrado pela iBarco. | `cupom_codigo`, `desconto_cupom` e `valor_final` da venda. |
+
+Como a conta funciona:
+
+- **É por passageiro.** O desconto da viagem e o da faixa são somados e limitados a 100 %. Passou de 100, o passageiro paga R$ 0,00: o desconto nunca vira crédito. Os outros passageiros da mesma venda pagam normalmente.
+- **A taxa de serviço vem depois.** Ela incide sobre o preço já com desconto, então o passageiro com 100 % paga R$ 0,00, taxa incluída.
+- **Os campos por passageiro não aplicam o limite.** `discount`, `price_with_discount` e `total` do passageiro mostram a soma dos percentuais como cadastrada. Se a soma passar de 100 %, esses campos podem ficar maiores que o preço e `price_with_discount` pode vir negativo. O valor que a pessoa paga é o de `valor_final` da venda: use sempre ele para mostrar o total e para cobrar.
+- **A faixa vem da idade.** Recebe o desconto da faixa quem a idade classifica nela (veja [Faixas etárias](/conceitos#faixas-etárias)). O passageiro isento continua na lista `passengers`, com `born_date`, documento e `pax_type` corretos.
+- **Cupom de 100 % zera a compra.** O desconto do cupom é limitado ao subtotal: o total fica `0.00`, nunca negativo. Vale o mesmo para cupom de valor fixo igual ou maior que o subtotal. Exceção: um cupom com teto de desconto (`desconto_maximo`) desconta no máximo o valor do teto, mesmo que o percentual seja 100 %.
+
+Exemplo: viagem com `price` 250.00, taxa de serviço de 20 % e faixa `CH` cadastrada com 100 %. Dois adultos e uma criança:
+
+| Passageiro | Desconto | Conta | Preço |
+|---|---|---|---|
+| Adulto | 0 % | 250.00 × 1.00 × 1.20 | 300.00 |
+| Adulto | 0 % | 250.00 × 1.00 × 1.20 | 300.00 |
+| Criança | 100 % | 250.00 × 0.00 × 1.20 | 0.00 |
+
+Total da venda: **600.00**. Na lista de faixas da viagem e no passageiro:
+
+```json
+{"pax_type": "CH", "rotulo": "Criança", "idade_min": 0, "idade_max": 11, "desconto": 100.0, "preco": 0.0, "cadastrada": true, "politica_id": 12}
+```
+
+```json
+{"first_name": "Lucas", "pax_type": "CH", "discount": "250.00", "service_tax": "0.00", "base_price": "250.00", "price_with_discount": "0.00", "total": "0.00"}
+```
+
+<Warning>
+**Venda com valor total 0,00**
+
+Se a venda inteira fecha em `0.00` (todos os passageiros isentos ou cupom de 100 %), `POST /venda/stripe-checkout/{venda_id}` responde `400` com `{"error": "Valor da venda inválido para pagamento."}`. Os outros caminhos de cobrança não têm tratamento próprio para valor zero. Antes de vender uma viagem totalmente gratuita, combine o fluxo com contato@ibarco.com.br.
+</Warning>
 
 ### Taxa de serviço
 
@@ -125,9 +205,9 @@ Os limites vêm da política de preço da embarcação (`years` em `politica_pre
 
 - Para `CH`, `years` é o limite superior **exclusivo**. Com `years = 12`, quem tem 11 anos é criança e quem tem 12 é adulto.
 - Para `SR`, `years` é o limite inferior **inclusivo**. Com `years = 60`, quem tem 60 anos é idoso.
-- Se a embarcação não cadastrou a faixa, valem os padrões **12** (criança) e **60** (idoso).
+- Se a embarcação não cadastrou a faixa, vale um limite padrão do sistema (**12** para criança e **60** para idoso, salvo outro cadastro geral). Use `faixas_etarias`, que já traz os limites aplicados.
 
-O desconto de cada faixa é cadastrado por embarcação. Não existe regra fixa: uma embarcação pode dar 100 % para criança e outra, 50 %.
+O desconto de cada faixa é cadastrado por embarcação. Não existe regra fixa: uma embarcação pode dar 100 % para criança e outra, 50 %. O desconto de 100 % está em vigor: veja [Desconto de 100 %](/conceitos#desconto-integral).
 
 **Como a idade é calculada:** ano atual − ano de nascimento, sem considerar o dia do aniversário. Quem nasceu em 15/12/2014 conta como 12 anos durante todo o ano de 2026.
 
