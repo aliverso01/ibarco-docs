@@ -5,6 +5,12 @@ description: "Mudanças na API e nesta documentação, da mais recente para a ma
 
 Mudanças na API e nesta documentação, da mais recente para a mais antiga. Mudanças incompatíveis são avisadas por e-mail com 30 dias de antecedência e registradas aqui (veja a [política de versionamento](/index#política-de-versionamento)).
 
+## 09/10/2026
+
+<Badge icon="clock" color="orange">Em breve</Badge> Entra em produção com o próximo deploy.
+
+- **Idempotência:** `POST /vendas`, `POST /venda/payment-link/{id}` e `POST /venda/process-payment/{id}` passam a aceitar o header `Idempotency-Key`. Repetir com a mesma chave e o mesmo corpo devolve a resposta original (header `Idempotent-Replayed: true`); corpo diferente dá `422`; chamada ainda em andamento dá `409`. Sem o header, nada muda. Veja [Compra](/compra#idempotência).
+
 ## 07/10/2026
 
 <Badge icon="clock" color="orange">Em breve</Badge> Entra em produção com o próximo deploy.

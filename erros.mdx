@@ -80,8 +80,8 @@ def mensagem_de_erro(corpo: dict) -> str:
 | `401` | Sem credencial, ou credencial inválida ou vencida. | Envie `X-Api-Key` ou renove o Bearer. |
 | `403` | Credencial válida, mas sem permissão para a operação, ou chamada de cobrança, cancelamento ou status sem a prova de acesso à venda (`{"detail": "Sem acesso a esta venda. Envie o token da venda (?t=) ou autentique-se."}`). | Se faltou o token, reenvie com `?t=<token_acesso>` (veja [Acesso à venda](/pagamento#acesso-à-venda)). Nos demais casos, não repita: a operação não é permitida ao parceiro. |
 | `404` | Recurso inexistente. Em `GET /viagens/`, também "nenhum resultado". | Confira o id ou os filtros. |
-| `409` | Conflito: viagem fora da janela de venda (pagamento); requisição idempotente ainda em andamento (planejado); sem vaga (planejado). | Leia a mensagem. Para idempotência, espere e repita. |
-| `422` | Mesma `Idempotency-Key` com corpo diferente (planejado). | Gere uma chave nova para a operação nova. |
+| `409` | Conflito: viagem fora da janela de venda (pagamento); requisição com a mesma `Idempotency-Key` ainda em andamento; sem vaga (planejado). | Leia a mensagem. Para idempotência, espere e repita. |
+| `422` | Mesma `Idempotency-Key` com corpo diferente. | Gere uma chave nova para a operação nova. |
 | `429` | Limite de requisições estourado. | Espere o tempo de `Retry-After` e repita. |
 | `500` | Falha interna. | Repita com espera crescente. Persistindo, avise o suporte. |
 | `502` | No cancelamento, o gateway recusou o estorno e a venda não foi cancelada. Veja [Cancelamento](/cancelamento#erros-do-cancelamento). Fora dele, indisponibilidade temporária. | Tente de novo ou fale com o suporte. |
