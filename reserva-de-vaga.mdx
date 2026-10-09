@@ -113,9 +113,9 @@ Resposta `200`:
 |---|---|
 | `controle_de_vagas`, `capacidade`, `vagas_disponiveis` | `capacidade` e `vagas_disponiveis` vêm `null` quando a viagem não controla vagas (`comporta` é `true`). |
 | `necessarias` | Vagas que o grupo ocupa. No assento numerado, são unidades (`ceil(passageiros / pessoas_por_unidade)`), e o `motivo` usa o nome da unidade (por exemplo, "Restam 1 camarote..."). |
-| `comporta` | `true` se há vaga para o grupo e a viagem está na janela de venda. |
+| `comporta` | `true` se há vaga para o grupo **e** a viagem está na janela de venda. É o campo que responde se dá para vender. |
 | `motivo` | Texto para mostrar ao cliente quando `comporta` é `false`. Fora da janela de venda, traz o motivo da trava de antecedência. |
-| `disponivel_para_venda` | `false` quando a viagem está fora da janela de venda. |
+| `disponivel_para_venda` | Só indica se a viagem está dentro da janela de venda (`false` fora dela). **Não considera lotação**: com a viagem lotada continua `true` e `comporta` é `false`. |
 
 ## Sem vaga na viagem
 
