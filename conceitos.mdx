@@ -57,6 +57,8 @@ Ida e volta são **duas vendas independentes**:
 | Status e token | `status_reserva` e `token_acesso` próprios. | Próprios. |
 | Cupom | Aplicado sobre o subtotal desta venda. | Aplicado só se você enviar o código nesta venda também. |
 
+O cupom pode ser recusado na volta mesmo com o código enviado: o limite de usos por cliente (contado por e-mail ou CPF) pode já ter sido atingido pela ida, o limite total de usos pode ter acabado, ou o cupom pode valer só para certos trechos, e a volta é o trecho invertido. Trate a recusa do cupom na criação da volta e decida se segue sem o desconto.
+
 A retenção do cancelamento também é por venda: ela conta o tempo que falta para a saída **daquela** viagem.
 
 Como agrupar do seu lado:
@@ -109,7 +111,7 @@ Viagem com `price` 250.00, sem promoção, taxa de serviço de 20 %, criança co
 
 Dois adultos e uma criança: 300.00 + 300.00 + 150.00 = **750.00**.
 
-### Desconto de 100 %
+### Desconto integral
 
 O desconto de 100 % está em vigor: a API aceita e aplica. Ele não vale para toda venda. Só aparece quando uma destas fontes chega a 100 %:
 
@@ -123,8 +125,9 @@ Como a conta funciona:
 
 - **É por passageiro.** O desconto da viagem e o da faixa são somados e limitados a 100 %. Passou de 100, o passageiro paga R$ 0,00: o desconto nunca vira crédito. Os outros passageiros da mesma venda pagam normalmente.
 - **A taxa de serviço vem depois.** Ela incide sobre o preço já com desconto, então o passageiro com 100 % paga R$ 0,00, taxa incluída.
+- **Os campos por passageiro não aplicam o limite.** `discount`, `price_with_discount` e `total` do passageiro mostram a soma dos percentuais como cadastrada. Se a soma passar de 100 %, esses campos podem ficar maiores que o preço e `price_with_discount` pode vir negativo. O valor que a pessoa paga é o de `valor_final` da venda: use sempre ele para mostrar o total e para cobrar.
 - **A faixa vem da idade.** Recebe o desconto da faixa quem a idade classifica nela (veja [Faixas etárias](/conceitos#faixas-etárias)). O passageiro isento continua na lista `passengers`, com `born_date`, documento e `pax_type` corretos.
-- **Cupom de 100 % zera a compra.** O desconto do cupom é limitado ao subtotal: o total fica `0.00`, nunca negativo. Vale o mesmo para cupom de valor fixo igual ou maior que o subtotal.
+- **Cupom de 100 % zera a compra.** O desconto do cupom é limitado ao subtotal: o total fica `0.00`, nunca negativo. Vale o mesmo para cupom de valor fixo igual ou maior que o subtotal. Exceção: um cupom com teto de desconto (`desconto_maximo`) desconta no máximo o valor do teto, mesmo que o percentual seja 100 %.
 
 Exemplo: viagem com `price` 250.00, taxa de serviço de 20 % e faixa `CH` cadastrada com 100 %. Dois adultos e uma criança:
 
@@ -204,7 +207,7 @@ Os limites vêm da política de preço da embarcação (`years` em `politica_pre
 - Para `SR`, `years` é o limite inferior **inclusivo**. Com `years = 60`, quem tem 60 anos é idoso.
 - Se a embarcação não cadastrou a faixa, vale um limite padrão do sistema (**12** para criança e **60** para idoso, salvo outro cadastro geral). Use `faixas_etarias`, que já traz os limites aplicados.
 
-O desconto de cada faixa é cadastrado por embarcação. Não existe regra fixa: uma embarcação pode dar 100 % para criança e outra, 50 %. O desconto de 100 % está em vigor: veja [Desconto de 100 %](/conceitos#desconto-de-100-%).
+O desconto de cada faixa é cadastrado por embarcação. Não existe regra fixa: uma embarcação pode dar 100 % para criança e outra, 50 %. O desconto de 100 % está em vigor: veja [Desconto de 100 %](/conceitos#desconto-integral).
 
 **Como a idade é calculada:** ano atual − ano de nascimento, sem considerar o dia do aniversário. Quem nasceu em 15/12/2014 conta como 12 anos durante todo o ano de 2026.
 
