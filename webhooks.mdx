@@ -3,7 +3,7 @@ title: "Webhooks"
 description: "Como acompanhar vendas por consulta e por webhooks de saída: eventos, formato, assinatura e reentregas."
 ---
 
-<Badge icon="clock" color="orange">Em breve</Badge>
+<Badge icon="circle-check" color="green">Disponível</Badge>
 
 ## Consulta de status
 
@@ -13,7 +13,7 @@ Para saber se uma venda foi paga ou cancelada, consulte [`GET /venda/check-statu
 
 ## Webhooks de saída
 
-<Badge icon="clock" color="orange">Em breve</Badge>
+<Badge icon="circle-check" color="green">Disponível</Badge>
 
 A iBarco avisa o seu sistema quando algo acontece com uma venda sua, sem você precisar consultar.
 
@@ -29,7 +29,7 @@ A iBarco avisa o seu sistema quando algo acontece com uma venda sua, sem você p
 | `venda.criada` | Uma venda sua foi criada. |
 | `venda.confirmada` | O gateway confirmou o pagamento. A venda está `CONFIRMED`. |
 | `venda.cancelada` | A venda foi cancelada. |
-| `venda.expirada` <Badge icon="clock" color="orange">Em breve</Badge> | O prazo de pagamento venceu sem pagamento (veja [Reserva de vaga](/reserva-de-vaga)). A venda está `EXPIRED` e as vagas voltaram para a viagem. O corpo é igual ao dos outros eventos, com `status_reserva` `EXPIRED`. |
+| `venda.expirada` <Badge icon="circle-check" color="green">Disponível</Badge> | O prazo de pagamento venceu sem pagamento (veja [Reserva de vaga](/reserva-de-vaga)). A venda está `EXPIRED` e as vagas voltaram para a viagem. O corpo é igual ao dos outros eventos, com `status_reserva` `EXPIRED`. |
 
 ### Requisição enviada ao seu endpoint
 
@@ -165,7 +165,7 @@ Guarde o segredo como guarda a chave de API: no servidor, fora do código. Se el
 
 ## Segredo, evento de teste e reenvio
 
-<Badge icon="clock" color="orange">Em breve</Badge>
+<Badge icon="circle-check" color="green">Disponível</Badge>
 
 A iBarco cadastra e mantém o seu webhook, a seu pedido: URL (HTTPS), eventos que você recebe (por padrão, todos) e descrição. O que você precisa saber para operar:
 

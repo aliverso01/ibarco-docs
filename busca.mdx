@@ -531,7 +531,7 @@ Campos da viagem:
 | `resumo_pax` | objeto ou `null` | Total do grupo pedido. `preco_total` é o valor que a compra vai cobrar (sem cupom). |
 | `disponivel_para_venda`, `motivo_indisponivel` | booleano, string | Se a viagem ainda pode ser vendida e, se não, por quê. |
 | `avaliable_seats` | inteiro ou `null` | Capacidade. `null` = sem controle de vagas; `0` = lotada. Não é saldo. Veja [Vagas](/conceitos#vagas). |
-| `vagas_disponiveis`, `controle_de_vagas`, `ocupacao_percentual` | inteiro ou `null`, booleano, decimal ou `null` | <Badge icon="clock" color="orange">Em breve</Badge> Saldo, se a viagem controla vagas e percentual ocupado. Veja [Reserva de vaga](/reserva-de-vaga#viagem). |
+| `vagas_disponiveis`, `controle_de_vagas`, `ocupacao_percentual` | inteiro ou `null`, booleano, decimal ou `null` | Saldo, se a viagem controla vagas e percentual ocupado. Veja [Reserva de vaga](/reserva-de-vaga#viagem). |
 | `porto_saida_nome`, `porto_chegada_nome` | string ou `null` | Portos desta viagem. |
 | `rota` | inteiro ou string | Id da linha do barco. Vem como texto quando não há linha cadastrada. Pode ser ignorado. |
 | `online`, `aprovacao`, `user` | | Não são usados na integração. Podem ser ignorados. |

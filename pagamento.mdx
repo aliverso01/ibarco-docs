@@ -17,7 +17,7 @@ Regras comuns:
 
 - **Vencimento:** a cobrança vence em 3 dias ou na data da saída, o que vier antes.
 - **Janela de venda:** se a viagem saiu da janela de venda entre a criação da venda e o pagamento, a cobrança é recusada com `409`.
-- **Venda expirada, cancelada ou já paga:** <Badge icon="clock" color="orange">Em breve</Badge> a cobrança é recusada com `409` e `status_reserva` no corpo. O prazo de pagamento é `reserva_expira_em`; veja [Reserva de vaga](/reserva-de-vaga).
+- **Venda expirada, cancelada ou já paga:** a cobrança é recusada com `409` e `status_reserva` no corpo. O prazo de pagamento é `reserva_expira_em`; veja [Reserva de vaga](/reserva-de-vaga).
 - **Token da venda:** todos os endpoints abaixo exigem a prova de acesso à venda (`?t=<token_acesso>`). Veja [Acesso à venda](#acesso-à-venda).
 - **Cada chamada cria uma nova cobrança no gateway.** A venda guarda só a última (`payment_intent_id`). Não repita a chamada sem necessidade.
 - **A confirmação nunca vem na resposta da chamada.** Quem confirma é o gateway, por webhook, para a iBarco. Veja [Acompanhar a confirmação](#acompanhar-a-confirmação).
@@ -187,7 +187,7 @@ Erros de `process-payment` e `payment-link`:
 | `403` | Sem token da venda e sem ser equipe ou comprador. | `{"detail": "Sem acesso a esta venda. Envie o token da venda (?t=) ou autentique-se."}` |
 | `404` | Venda inexistente. | `{"error": "Venda não encontrada."}` |
 | `409` | Viagem saiu da janela de venda. | `{"detail": "<motivo>", "error": "<motivo>"}` |
-| `409` | Venda `EXPIRED`, `CANCELED` ou já paga. <Badge icon="clock" color="orange">Em breve</Badge> | `{"detail": "<motivo>", "error": "<motivo>", "status_reserva": "EXPIRED"}` |
+| `409` | Venda `EXPIRED`, `CANCELED` ou já paga. | `{"detail": "<motivo>", "error": "<motivo>", "status_reserva": "EXPIRED"}` |
 | `4xx` | Recusa do gateway (CPF inválido, cartão recusado...). O status é o devolvido pelo gateway. | `{"error": "Erro ao processar pagamento", "details": {...}}` ou `{"error": "<descrição>", "details": {...}}` |
 | `500` | Falha interna. | `{"error": "..."}` |
 
@@ -249,7 +249,7 @@ Com os [webhooks de saída](/webhooks), a consulta periódica serve só como red
 
 ## Método de pagamento gravado
 
-<Badge icon="clock" color="orange">Em breve</Badge>
+<Badge icon="circle-check" color="green">Disponível</Badge>
 
 O campo `metodo_pagamento` da venda registra a forma usada.
 
@@ -261,4 +261,4 @@ O campo `metodo_pagamento` da venda registra a forma usada.
 | `CREDITO_PARCELADO` | `process-payment` com `CREDIT_CARD` parcelado. | `Credito Parcelado` |
 | `STRIPE` | `stripe-checkout`. | `Stripe` |
 
-Até o deploy, aceite os dois formatos, comparando sem diferenciar maiúsculas. Depois dele, só os valores da primeira coluna.
+Só os valores da primeira coluna são gravados. Vendas anteriores foram convertidas; ao ler vendas antigas, compare sem diferenciar maiúsculas.
