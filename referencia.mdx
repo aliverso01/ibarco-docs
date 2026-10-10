@@ -32,7 +32,7 @@ Autenticação: **Chave** = `X-Api-Key`; **Bearer** = `Authorization: Bearer <ac
 | `GET` | `/datas-disponiveis/` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Datas com saída](/busca#datas-com-saída) |
 | `GET` | `/viagens/` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Buscar viagens](/busca#buscar-viagens) |
 | `GET` | `/viagens/{id}/` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Detalhe da viagem](/busca#detalhe-da-viagem) |
-| `GET` | `/viagens/{id}/disponibilidade` | Chave ou Bearer | <Badge icon="clock" color="orange">Em breve</Badge> | [Disponibilidade da viagem](/reserva-de-vaga#disponibilidade-da-viagem) |
+| `GET` | `/viagens/{id}/disponibilidade` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Disponibilidade da viagem](/reserva-de-vaga#disponibilidade-da-viagem) |
 | `GET` | `/global-tax-percentual/1` | Nenhuma | <Badge icon="circle-check" color="green">Disponível</Badge> | [Taxa de serviço](/conceitos#taxa-de-serviço) |
 
 ## Compra
@@ -42,7 +42,7 @@ Autenticação: **Chave** = `X-Api-Key`; **Bearer** = `Authorization: Bearer <ac
 | `POST` | `/vendas` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Criar venda](/compra#criar-venda) |
 | `GET` | `/vendas/{id}` | Chave ou Bearer (+ `?t=` para dados completos) | <Badge icon="circle-check" color="green">Disponível</Badge> | [Consultar a venda](/compra#consultar-a-venda) |
 | `POST` | `/cupons/validar` | Chave ou Bearer | <Badge icon="circle-check" color="green">Disponível</Badge> | [Validar cupom](/compra#validar-cupom) |
-| Header | `Idempotency-Key` | – | <Badge icon="clock" color="orange">Em breve</Badge> | [Idempotência](/compra#idempotência) |
+| Header | `Idempotency-Key` | – | <Badge icon="circle-check" color="green">Disponível</Badge> | [Idempotência](/compra#idempotência) |
 
 ## Pagamento
 
@@ -59,12 +59,12 @@ A exigência do token da venda nesses endpoints está <Badge icon="clock" color=
 
 | Método | Caminho | Autenticação | Status | Seção |
 |---|---|---|---|---|
-| `GET` | `/venda/cancelamento/{venda_id}` | Chave ou Bearer + token da venda | <Badge icon="clock" color="orange">Em breve</Badge> | [Prévia do cancelamento](/cancelamento#prévia-do-cancelamento) |
-| `POST` | `/venda/cancelamento/{venda_id}` | Chave ou Bearer + token da venda | <Badge icon="clock" color="orange">Em breve</Badge> (faixas de retenção e estorno automático) | [Cancelar com estorno](/cancelamento#cancelar-com-estorno) |
+| `GET` | `/venda/cancelamento/{venda_id}` | Chave ou Bearer + token da venda | <Badge icon="circle-check" color="green">Disponível</Badge> | [Prévia do cancelamento](/cancelamento#prévia-do-cancelamento) |
+| `POST` | `/venda/cancelamento/{venda_id}` | Chave ou Bearer + token da venda | <Badge icon="circle-check" color="green">Disponível</Badge> (faixas de retenção e estorno automático) | [Cancelar com estorno](/cancelamento#cancelar-com-estorno) |
 
 ## Webhooks de saída
 
 | Evento | Status | Seção |
 |---|---|---|
-| `venda.criada`, `venda.confirmada`, `venda.cancelada` | <Badge icon="clock" color="orange">Em breve</Badge> | [Webhooks](/webhooks) |
-| `venda.expirada` | <Badge icon="clock" color="orange">Em breve</Badge> | [Webhooks](/webhooks#eventos) |
+| `venda.criada`, `venda.confirmada`, `venda.cancelada` | <Badge icon="circle-check" color="green">Disponível</Badge> | [Webhooks](/webhooks) |
+| `venda.expirada` | <Badge icon="circle-check" color="green">Disponível</Badge> | [Webhooks](/webhooks#eventos) |
